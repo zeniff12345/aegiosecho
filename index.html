@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aegis Echo — Command Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div id="boot-overlay" class="boot-overlay">
+    <p class="boot-line">AEGIS ECHO — SYSTEM INITIALIZING...</p>
+    <p class="boot-line">LOADING SENSOR FUSION ENGINE...</p>
+    <p class="boot-line">CALIBRATING SWARM CONSENSUS NODES...</p>
+    <p class="boot-line boot-ready">STANDBY — AWAITING INCIDENT DATA</p>
+  </div>
+
+  <header class="top-bar">
+    <h1>AEGIS ECHO</h1>
+    <span id="incident-counter" class="incident-counter">0 ACTIVE INCIDENTS</span>
+    <button id="ai-mode-toggle" class="ai-toggle">🧠 RULE-BASED MODE</button>
+    <button id="grid-toggle" class="grid-toggle offline">
+      DECENTRALIZED EDGE MODE — 100% OFFLINE
+    </button>
+  </header>
+
+  <main class="dashboard">
+
+    <!-- PANEL A: Sensor Fusion Feed -->
+    <section id="panel-a" class="panel">
+      <h2>Sensor Fusion Feed</h2>
+      <button id="live-intake-btn" class="live-intake-btn">🎙 Live Voice Intake (needs internet)</button>
+      <div id="case-list" class="case-list">
+        <!-- scenario buttons get inserted here by main.js -->
+      </div>
+      <div class="voice-module">
+        <div id="waveform" class="waveform"></div>
+        <div class="transcript-row">
+          <p id="transcript" class="transcript">Select a case to load transcript...</p>
+          <button id="speak-btn" class="speak-btn" title="Play transcript aloud">🔊</button>
+        </div>
+        <p id="hazard-tag" class="hazard-tag"></p>
+        <div class="stress-bar-wrap">
+          <span>Stress Index</span>
+          <div class="stress-bar"><div id="stress-fill" class="stress-fill"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANEL B: Tactical Map -->
+    <section id="panel-b" class="panel">
+      <h2>Spatial Telemetry & Grid Mapping</h2>
+      <div id="map-area" class="map-area">
+        <div class="map-grid-lines"></div>
+        <div id="hazard-markers"></div>
+        <div id="asset-marker" class="asset-marker" title="Rescue Asset">▲</div>
+      </div>
+    </section>
+
+    <!-- PANEL C: Adversarial Consensus Engine Terminal -->
+    <section id="panel-c" class="panel">
+      <h2>Swarm Debate Terminal</h2>
+      <div id="debate-log" class="debate-log">
+        <!-- debate messages get typed in here by debateEngine.js -->
+      </div>
+      <button id="approve-btn" class="approve-btn" disabled>
+        AUTHORIZE CRITICAL SWARM PAYLOAD
+      </button>
+    </section>
+
+  </main>
+
+  <!-- Load agent logic first, then the engine that orchestrates them, then main.js which ties it all together -->
+  <script src="js/triageAgent.js"></script>
+  <script src="js/logisticsAgent.js"></script>
+  <script src="js/commanderAgent.js"></script>
+  <script src="js/debateEngine.js"></script>
+  <script src="js/mapEngine.js"></script>
+  <script src="js/waveform.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/aiAgent.js"></script>
+  <script src="js/voiceIntake.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
