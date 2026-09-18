@@ -17,4 +17,5 @@ function triageAssess(scenario) {
     hazardTag: scenario.hazardTag,
     proposal: `Deploy nearest rescue asset to ${scenario.name} immediately. Life threat: ${lifeThreat}.`
   };
-}
+} 
+
