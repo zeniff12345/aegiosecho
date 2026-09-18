@@ -1,15 +1,25 @@
-// WAVEFORM — generates the animated bar-style waveform in Panel A.
-// Each bar gets a random animation delay so they don't all bounce in sync.
+/**
+ * js/waveform.js
+ * Controls dynamic audio waveform bar animations for Panel A.
+ */
 
-function renderWaveform() {
-  const wave = document.getElementById("waveform");
-  wave.innerHTML = "";
-  const barCount = 24;
+// Function to dynamically generate waveform visualizer bars
+function initWaveform(barCount = 8) {
+  const container = document.getElementById('waveform-container');
+  if (!container) return;
+
+  container.innerHTML = ''; // Clear existing bars
+
   for (let i = 0; i < barCount; i++) {
-    const bar = document.createElement("div");
-    bar.className = "bar";
-    bar.style.animationDelay = (Math.random() * 1).toFixed(2) + "s";
-    bar.style.animationDuration = (0.6 + Math.random() * 0.6).toFixed(2) + "s";
-    wave.appendChild(bar);
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    // Randomize initial animation delay for an organic visual feel
+    bar.style.animationDelay = `${(Math.random() * 0.8).toFixed(2)}s`;
+    container.appendChild(bar);
   }
 }
+
+// Automatically build waveform when DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  initWaveform(8);
+});
