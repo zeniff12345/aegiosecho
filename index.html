@@ -2,101 +2,85 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aegis Echo — Command Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <div id="boot-overlay" class="boot-overlay">
-    <p class="boot-line">AEGIS ECHO — SYSTEM INITIALIZING...</p>
-    <p class="boot-line">LOADING SENSOR FUSION ENGINE...</p>
-    <p class="boot-line">CALIBRATING SWARM CONSENSUS NODES...</p>
-    <p class="boot-line boot-ready">STANDBY — AWAITING INCIDENT DATA</p>
-  </div>
-
-  <header class="top-bar">
-    <h1>AEGIS ECHO</h1>
-    <span id="incident-counter" class="incident-counter">0 ACTIVE INCIDENTS</span>
-    <button id="ai-mode-toggle" class="ai-toggle">🧠 RULE-BASED MODE</button>
-    <button id="grid-toggle" class="grid-toggle offline">
-      DECENTRALIZED EDGE MODE — 100% OFFLINE
-    </button>
+  <!-- Top Command Header -->
+  <header class="command-header">
+    <div class="logo-group">
+      <h1>AEGIS ECHO</h1>
+      <span class="sub-title">Decentralized Multi-Agent Triage Network</span>
+    </div>
+    
+    <!-- Edge Mode Toggle Switch -->
+    <div class="toggle-container">
+      <span id="mode-label">CLOUD DEPENDENT MODE</span>
+      <label class="switch">
+        <input type="checkbox" id="edge-toggle" onchange="handleModeToggle(this)">
+        <span class="slider"></span>
+      </label>
+    </div>
   </header>
 
-  <main class="dashboard">
-
-    <!-- PANEL A: Multimodal Sensor Fusion Feed -->
-    <section class="panel panel-left">
-  <h2>1. SENSOR FUSION ENGINE</h2>
-
-  <!-- 1. Active Crisis Cases List -->
-  <div class="case-section">
-    <h3>ACTIVE CRISIS SITES</h3>
-    <div class="case-list" id="case-list-container">
-      <!-- main.js will dynamically insert scenario buttons here -->
-    </div>
-  </div>
-
-  <!-- 2. Voice Triage Module -->
-  <div class="voice-module">
-    <h3>VOICE TRIAGE MODULE</h3>
+  <!-- 3-Panel Tactical Grid Layout -->
+  <main class="dashboard-grid">
     
-    <!-- Waveform container targeted by waveform.js -->
-    <div class="waveform" id="waveform-container">
-      <!-- waveform.js will dynamically insert 8 animated bars here -->
-    </div>
-
-    <!-- Hazard Tag Display -->
-    <p class="hazard-tag">
-      HAZARD: <span id="hazard-tag-text">Select a case...</span>
-    </p>
-
-    <!-- 3. Biometric Stress Meter -->
-    <div class="stress-container">
-      <div class="stress-label">
-        <span>VICTIM STRESS INDEX</span>
-        <span id="stress-value">0%</span>
+    <!-- PANEL A: Sensor Fusion Engine -->
+    <section class="panel panel-left">
+      <h2 class="panel-title">1. SENSOR FUSION ENGINE</h2>
+      
+      <div class="section-box">
+        <h3>ACTIVE CRISIS SITES</h3>
+        <div id="case-list-container" class="case-list">
+          <!-- Dynamic scenario buttons injected here by main.js -->
+        </div>
       </div>
-      <div class="stress-meter">
-        <div class="stress-bar" id="stress-bar" style="width: 0%;"></div>
-      </div>
-    </div>
-  </div>
-</section>
 
-    <!-- PANEL B: Tactical Map -->
-    <section id="panel-b" class="panel">
-      <h2>Spatial Telemetry & Grid Mapping</h2>
-      <div id="map-area" class="map-area">
-        <div class="map-grid-lines"></div>
-        <div id="hazard-markers"></div>
-        <div id="asset-marker" class="asset-marker" title="Rescue Asset">▲</div>
+      <div class="section-box">
+        <h3>VOICE TRIAGE MODULE</h3>
+        <div class="waveform" id="waveform-container">
+          <!-- Waveform bars injected here by waveform.js -->
+        </div>
+        <p class="hazard-tag">HAZARD: <span id="hazard-tag-text">Select a case...</span></p>
+
+        <div class="stress-container">
+          <div class="stress-label">
+            <span>VICTIM STRESS INDEX</span>
+            <span id="stress-value">0%</span>
+          </div>
+          <div class="stress-meter">
+            <div id="stress-bar" class="stress-bar" style="width: 0%;"></div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- PANEL C: Adversarial Consensus Engine Terminal -->
-    <section id="panel-c" class="panel">
-      <h2>Swarm Debate Terminal</h2>
-      <div id="debate-log" class="debate-log">
-        <!-- debate messages get typed in here by debateEngine.js -->
+    <!-- PANEL B: Spatial Telemetry & Grid Mapping -->
+    <section class="panel panel-center">
+      <h2 class="panel-title">2. SPATIAL TELEMETRY</h2>
+      <div class="map-area" id="map-area">
+        <p class="map-placeholder">[TACTICAL GRID MAP]</p>
       </div>
-      <button id="approve-btn" class="approve-btn" disabled>
-        AUTHORIZE CRITICAL SWARM PAYLOAD
+    </section>
+
+    <!-- PANEL C: Agent Consensus Terminal -->
+    <section class="panel panel-right">
+      <h2 class="panel-title">3. AGENT CONSENSUS TERMINAL</h2>
+      <div class="terminal-stream" id="terminal-stream">
+        <p class="sys-line">[SYSTEM INITIALIZED] Awaiting incident selection...</p>
+      </div>
+      <button id="auth-btn" class="crimson-btn" disabled>
+        AUTHORIZE SPECIFIC CRITICAL SWARM ACTIONS
       </button>
     </section>
 
   </main>
 
-  <!-- Load agent logic first, then the engine that orchestrates them, then main.js which ties it all together -->
-  <script src="js/triageAgent.js"></script>
-  <script src="js/logisticsAgent.js"></script>
-  <script src="js/commanderAgent.js"></script>
-  <script src="js/debateEngine.js"></script>
-  <script src="js/mapEngine.js"></script>
+  <!-- Script Imports -->
   <script src="js/waveform.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/aiAgent.js"></script>
-  <script src="js/voiceIntake.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
