@@ -50,11 +50,33 @@
     <!-- PANEL B: Tactical Map -->
     <section id="panel-b" class="panel">
       <h2>Spatial Telemetry & Grid Mapping</h2>
-      <div id="map-area" class="map-area">
-        <div class="map-grid-lines"></div>
-        <div id="hazard-markers"></div>
-        <div id="asset-marker" class="asset-marker" title="Rescue Asset"></div>
+      <div class="map-header">
+        <strong id="map-case-name">No case selected</strong>
+        <span id="map-case-coordinates">-- / --</span>
       </div>
+      <div id="map-area" class="map-area">
+        <div class="map-content">
+          <div class="map-grid-lines"></div>
+          <svg id="deployment-route" class="deployment-route" aria-hidden="true"></svg>
+          <div id="hazard-markers"></div>
+          <div id="asset-marker" class="asset-marker" title="Rescue Asset"></div>
+          <div class="map-empty-state">⌖<span>SELECT AN INCIDENT TO BEGIN</span></div>
+        </div>
+        <div class="map-controls" aria-label="Map zoom controls">
+          <button id="map-zoom-in" type="button" title="Zoom in">+</button>
+          <button id="map-zoom-out" type="button" title="Zoom out">−</button>
+          <button id="map-zoom-reset" type="button" title="Reset zoom">RESET</button>
+        </div>
+        <fieldset class="map-layers">
+          <legend>LAYERS</legend>
+          <label><input id="layer-incidents" type="checkbox" checked> INCIDENTS</label>
+          <label><input id="layer-routes" type="checkbox" checked> ROUTES</label>
+          <label><input id="layer-labels" type="checkbox" checked> LABELS</label>
+          <label><input id="layer-grid" type="checkbox" checked> GRID</label>
+        </fieldset>
+      </div>
+      <div id="map-legend" class="map-legend"></div>
+      <div id="map-status" class="map-status">[-- / --] · Asset: -- · Staged</div>
     </section>
 
     <!-- PANEL C: Adversarial Consensus Engine Terminal -->
@@ -62,10 +84,30 @@
       <h2>Swarm Debate Terminal</h2>
       <div id="debate-log" class="debate-log">
         <!-- debate messages get typed in here by debateEngine.js -->
+        <div class="debate-empty-state">◌<span>SELECT AN INCIDENT TO BEGIN</span></div>
       </div>
-      <button id="approve-btn" class="approve-btn" disabled>
-        AUTHORIZE CRITICAL SWARM PAYLOAD
-      </button>
+      <div class="action-controls">
+        <button id="approve-btn" class="approve-btn" disabled>
+          AUTHORIZE CRITICAL SWARM PAYLOAD
+        </button>
+        <div class="secondary-actions">
+          <button id="deny-btn" class="secondary-action" disabled>DENY WITH REASON</button>
+          <button id="hold-btn" class="secondary-action" disabled>HOLD FOR LATER</button>
+        </div>
+        <div id="deny-reason-panel" class="deny-reason-panel" hidden>
+          <span class="reason-label">Select denial reason</span>
+          <div class="reason-options">
+            <button type="button" class="reason-option" data-reason="Insufficient asset confidence">Insufficient asset confidence</button>
+            <button type="button" class="reason-option" data-reason="Risk too high">Risk too high</button>
+            <button type="button" class="reason-option" data-reason="Awaiting human confirmation">Awaiting human confirmation</button>
+            <button type="button" class="reason-option" data-reason="Other">Other</button>
+          </div>
+          <div class="other-reason-row" hidden>
+            <input id="other-deny-reason" type="text" maxlength="80" placeholder="Enter a short reason">
+            <button id="submit-other-deny" type="button" class="reason-submit">SUBMIT</button>
+          </div>
+        </div>
+      </div>
     </section>
 
   </main>

@@ -21,7 +21,6 @@ function triageAssess(scenario) {
   const hazard = scenario.hazardTag || "active hazard";
   const assetNames = {
     ground: "ground team",
-    boat: "boat unit",
     drone: "drone unit",
     air: "air unit"
   };

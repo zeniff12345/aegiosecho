@@ -9,6 +9,23 @@
 // key, rate limit), it automatically falls back to rule-based so the demo
 // never breaks.
 
+let debateGeneration = 0;
+const debateTimers = new Set();
+
+function cancelDebate() {
+  debateGeneration++;
+  debateTimers.forEach((timer) => clearTimeout(timer));
+  debateTimers.clear();
+}
+
+function scheduleDebate(callback, delay, generation) {
+  const timer = setTimeout(() => {
+    debateTimers.delete(timer);
+    if (generation === debateGeneration) callback();
+  }, delay);
+  debateTimers.add(timer);
+}
+
 function buildRuleLines(scenario) {
   const triageResult = triageAssess(scenario);
   const logisticsResult = logisticsCheck(scenario);
@@ -73,11 +90,50 @@ function buildRuleLines(scenario) {
   return lines;
 }
 
+function renderVerdictSummary(log, triageResult, logisticsResult, commanderResult) {
+  const existing = log.parentElement.querySelector(".verdict-summary");
+  if (existing) existing.remove();
+
+  const truncate = (text, maxLength = 96) => {
+    const value = String(text || "").replace(/\s+/g, " ").trim();
+    return value.length > maxLength ? `${value.slice(0, maxLength - 1).trim()}…` : value;
+  };
+  const logisticsSummary = logisticsResult.objection
+    ? logisticsResult.objection
+    : "No objection, cleared to proceed.";
+  const triageSummary = `${triageResult.lifeThreat || "Unknown"} threat, panic ${triageResult.panicRating ?? "n/a"}: ${triageResult.proposal || "No proposal."}`;
+
+  const summary = document.createElement("aside");
+  summary.className = "verdict-summary";
+  summary.setAttribute("aria-label", "Verdict summary");
+  [
+    ["Triage", triageSummary],
+    ["Logistics", logisticsSummary],
+    ["Commander", commanderResult.finalPlan || "No final decision."]
+  ].forEach(([agent, text]) => {
+    const line = document.createElement("p");
+    line.className = "verdict-summary-line";
+    const label = document.createElement("strong");
+    label.textContent = `${agent}:`;
+    line.append(label, document.createTextNode(` ${truncate(text)}`));
+    summary.appendChild(line);
+  });
+
+  log.parentElement.insertBefore(summary, log);
+}
+
 async function runDebate(scenario) {
+  cancelDebate();
+  const generation = debateGeneration;
   const log = document.getElementById("debate-log");
   const approveBtn = document.getElementById("approve-btn");
   log.innerHTML = "";
-  approveBtn.disabled = true;
+  setDecisionControlsDisabled(true);
+
+  const summaryTriage = triageAssess(scenario);
+  const summaryLogistics = logisticsCheck(scenario);
+  const summaryCommander = commanderResolve(summaryTriage, summaryLogistics, scenario);
+  renderVerdictSummary(log, summaryTriage, summaryLogistics, summaryCommander);
 
   let lines;
 
@@ -88,9 +144,11 @@ async function runDebate(scenario) {
     log.appendChild(p);
     try {
       lines = await buildAILines(scenario);
+      if (generation !== debateGeneration) return;
       log.innerHTML = ""; // clear the "contacting" message once real lines are ready
     } catch (err) {
       console.warn("Real AI call failed, falling back to rule-based logic:", err);
+      if (generation !== debateGeneration) return;
       log.innerHTML = "";
       const fallbackNotice = document.createElement("p");
       fallbackNotice.className = "logistics";
@@ -105,8 +163,10 @@ async function runDebate(scenario) {
   // Render each exchange as a small live-response card.
   let i = 0;
   function typeNext() {
+    if (generation !== debateGeneration) return;
     if (i >= lines.length) {
-      approveBtn.disabled = false;
+      const finalized = resolvedIds.has(scenario.id) || deniedIds.has(scenario.id);
+      setDecisionControlsDisabled(finalized);
       playConfirm();
       return;
     }
@@ -142,7 +202,8 @@ async function runDebate(scenario) {
     log.scrollTop = log.scrollHeight;
     playBlip();
 
-    setTimeout(() => {
+    scheduleDebate(() => {
+      if (generation !== debateGeneration) return;
       typing.remove();
       const messageNode = document.createElement("div");
       messageNode.className = "debate-message";
@@ -153,15 +214,15 @@ async function runDebate(scenario) {
         log.scrollTop = log.scrollHeight;
         if (character < message.length) {
           character++;
-          setTimeout(typeMessage, 16);
+          scheduleDebate(typeMessage, 16, generation);
         } else {
           card.classList.add("is-visible");
           i++;
-          setTimeout(typeNext, 420);
+          scheduleDebate(typeNext, 420, generation);
         }
       }
       typeMessage();
-    }, 480);
+    }, 480, generation);
   }
   typeNext();
 }

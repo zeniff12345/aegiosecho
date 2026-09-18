@@ -1,10 +1,68 @@
 // MAP ENGINE — Panel B logic.
 // Renders tactical hazard markers and animates the rescue asset after approval.
 
+const MAP_ZOOM_STEPS = [1, 1.25, 1.5];
+let mapZoomIndex = 0;
+
+function setMapZoom(index) {
+  mapZoomIndex = Math.max(0, Math.min(MAP_ZOOM_STEPS.length - 1, index));
+  const content = document.querySelector(".map-content");
+  if (content) content.style.setProperty("transform", `scale(${MAP_ZOOM_STEPS[mapZoomIndex]})`, "important");
+}
+
+function setupMapControls() {
+  document.getElementById("map-zoom-in").addEventListener("click", () => setMapZoom(mapZoomIndex + 1));
+  document.getElementById("map-zoom-out").addEventListener("click", () => setMapZoom(mapZoomIndex - 1));
+  document.getElementById("map-zoom-reset").addEventListener("click", () => setMapZoom(0));
+
+  ["incidents", "routes", "labels", "grid"].forEach((layer) => {
+    document.getElementById(`layer-${layer}`).addEventListener("change", (event) => {
+      document.querySelector(".map-content").classList.toggle(`hide-${layer}`, !event.target.checked);
+    });
+  });
+  setMapZoom(0);
+}
+
+function updateMapInfo(scenario) {
+  if (!scenario) return;
+  const state = typeof resolvedIds !== "undefined" && resolvedIds.has(scenario.id)
+    ? "Authorized"
+    : typeof deniedIds !== "undefined" && deniedIds.has(scenario.id)
+      ? "Denied"
+      : typeof heldIds !== "undefined" && heldIds.has(scenario.id)
+        ? "Held"
+        : "Awaiting authorization";
+  const coordinates = `[${scenario.mapX}, ${scenario.mapY}]`;
+  const name = document.getElementById("map-case-name");
+  const coordinateLabel = document.getElementById("map-case-coordinates");
+  const status = document.getElementById("map-status");
+  if (name) name.textContent = scenario.name;
+  if (coordinateLabel) coordinateLabel.textContent = coordinates;
+  if (status) status.textContent = `${coordinates} · Asset: ${String(scenario.assetType || "unknown").toUpperCase()} · ${state}`;
+  renderMapLegend();
+}
+
+function renderMapLegend() {
+  const legend = document.getElementById("map-legend");
+  if (!legend || typeof scenarios === "undefined") return;
+  const counts = { ground: 0, drone: 0, air: 0 };
+  scenarios.forEach((scenario) => {
+    if (counts[scenario.assetType] !== undefined) counts[scenario.assetType]++;
+  });
+  legend.innerHTML = `
+    <span class="unit-key"><i class="unit-swatch drone"></i>DRONE ×${counts.drone}</span>
+    <span class="unit-key"><i class="unit-swatch ground"></i>GROUND ×${counts.ground}</span>
+    <span class="unit-key"><i class="unit-swatch air"></i>AIR ×${counts.air}</span>
+    <span class="hazard-key"><i></i>HAZARD ZONE</span>`;
+}
+
 function renderHazardRing(scenario) {
   const container = document.getElementById("hazard-markers");
   const map = document.getElementById("map-area");
   container.innerHTML = "";
+  const emptyState = document.querySelector(".map-empty-state");
+  if (emptyState) emptyState.hidden = true;
+  updateMapInfo(scenario);
 
   const incidents = typeof scenarios !== "undefined" && scenarios.length
     ? scenarios
@@ -76,6 +134,7 @@ function moveAssetToScenario(scenario) {
   asset.innerHTML = ASSET_ICONS[scenario.assetType] || ASSET_ICONS.ground;
   asset.classList.add("moving");
   drawAssetTrail(map, startX, startY, controlX, controlY, targetX, targetY);
+  drawDeploymentRoute(map, startX, startY, controlX, controlY, targetX, targetY);
 
   const started = performance.now();
   function animateAsset(now) {
@@ -97,6 +156,24 @@ function resetAssetPosition() {
   asset.style.top = "85%";
   asset.innerHTML = ASSET_ICONS.ground;
   asset.classList.remove("moving");
+  const route = document.getElementById("deployment-route");
+  if (route) route.innerHTML = "";
+}
+
+function restoreDeployedAsset(scenario) {
+  const asset = document.getElementById("asset-marker");
+  const map = document.getElementById("map-area");
+  const bounds = map.getBoundingClientRect();
+  const startX = 0.1 * bounds.width;
+  const startY = 0.85 * bounds.height;
+  const targetX = scenario.mapX / 100 * bounds.width;
+  const targetY = scenario.mapY / 100 * bounds.height;
+  const controlX = (startX + targetX) / 2 + (targetY - startY) * 0.18;
+  const controlY = (startY + targetY) / 2 - (targetX - startX) * 0.18;
+  asset.innerHTML = ASSET_ICONS[scenario.assetType] || ASSET_ICONS.ground;
+  asset.style.left = `${scenario.mapX}%`;
+  asset.style.top = `${scenario.mapY}%`;
+  drawDeploymentRoute(map, startX, startY, controlX, controlY, targetX, targetY);
 }
 
 function quadraticPoint(start, control, end, progress) {
@@ -117,3 +194,12 @@ function drawAssetTrail(map, startX, startY, controlX, controlY, targetX, target
   map.appendChild(trail);
   setTimeout(() => trail.remove(), 2200);
 }
+
+function drawDeploymentRoute(map, startX, startY, controlX, controlY, targetX, targetY) {
+  const route = document.getElementById("deployment-route");
+  if (!route) return;
+  route.setAttribute("viewBox", `0 0 ${map.clientWidth} ${map.clientHeight}`);
+  route.innerHTML = `<path d="M ${startX} ${startY} Q ${controlX} ${controlY} ${targetX} ${targetY}"></path>`;
+}
+
+setupMapControls();

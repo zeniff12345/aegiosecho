@@ -3,12 +3,15 @@
 
 let scenarios = [];
 let resolvedIds = new Set();
+let deniedIds = new Set();
+let heldIds = new Set();
 
 async function loadScenarios() {
   const res = await fetch("data/scenarios.json");
   scenarios = await res.json();
   renderCaseList();
   updateIncidentCounter();
+  renderMapLegend();
 }
 
 function renderCaseList() {
@@ -16,24 +19,62 @@ function renderCaseList() {
   list.innerHTML = "";
   scenarios.forEach((s) => {
     const btn = document.createElement("button");
-    btn.textContent = (resolvedIds.has(s.id) ? "✔ " : "") + s.name;
+    const state = resolvedIds.has(s.id)
+      ? { label: "APPROVED", className: "approved" }
+      : deniedIds.has(s.id)
+        ? { label: "DENIED", className: "denied" }
+        : heldIds.has(s.id)
+          ? { label: "HELD", className: "held" }
+          : null;
+    btn.textContent = s.name;
+    if (state) {
+      const badge = document.createElement("span");
+      badge.className = `case-state-badge ${state.className}`;
+      badge.textContent = state.label;
+      btn.appendChild(badge);
+    }
     if (resolvedIds.has(s.id)) btn.classList.add("resolved");
+    if (deniedIds.has(s.id)) btn.classList.add("denied-case");
+    if (heldIds.has(s.id)) btn.classList.add("held-case");
     btn.onclick = () => selectScenario(s.id);
     list.appendChild(btn);
   });
 }
 
 function updateIncidentCounter() {
-  const active = scenarios.length - resolvedIds.size;
+  const active = scenarios.length - resolvedIds.size - deniedIds.size;
   document.getElementById("incident-counter").textContent = `${active} ACTIVE INCIDENTS`;
 }
 
 let activeScenario = null;
+let panelTransitionId = 0;
+
+function beginPanelTransition() {
+  const transitionId = ++panelTransitionId;
+  const mapPanel = document.getElementById("panel-b");
+  const map = document.getElementById("map-area");
+  const debate = document.getElementById("debate-log");
+  mapPanel.classList.add("case-switching");
+  map.classList.add("case-switching");
+  debate.classList.add("case-switching");
+  setTimeout(() => {
+    if (transitionId !== panelTransitionId) return;
+    setTimeout(() => {
+      if (transitionId !== panelTransitionId) return;
+      mapPanel.classList.remove("case-switching");
+      map.classList.remove("case-switching");
+      debate.classList.remove("case-switching");
+    }, 180);
+  }, 0);
+}
 
 function selectScenario(id) {
   const scenario = scenarios.find((s) => s.id === id);
   if (!scenario) return;
   activeScenario = scenario;
+  if (typeof cancelDebate === "function") cancelDebate();
+  beginPanelTransition();
+  resetDecisionControls();
 
   // Update Panel A voice module
   document.getElementById("transcript").textContent = scenario.transcript;
@@ -44,6 +85,8 @@ function selectScenario(id) {
   // Update Panel B map
   renderHazardRing(scenario);
   resetAssetPosition();
+  if (resolvedIds.has(scenario.id)) restoreDeployedAsset(scenario);
+  updateMapInfo(scenario);
 
   // Trigger Panel C debate for this scenario
   runDebate(scenario);
@@ -54,9 +97,89 @@ document.getElementById("approve-btn").addEventListener("click", () => {
   moveAssetToScenario(activeScenario);
   playConfirm();
   resolvedIds.add(activeScenario.id);
+  deniedIds.delete(activeScenario.id);
+  heldIds.delete(activeScenario.id);
+  appendDecisionLog("[SYSTEM] Human authorization confirmed — asset deployed. Case marked approved.");
+  setDecisionControlsDisabled(true);
   renderCaseList();
   updateIncidentCounter();
+  updateMapInfo(activeScenario);
 });
+
+document.getElementById("deny-btn").addEventListener("click", () => {
+  if (!activeScenario || deniedIds.has(activeScenario.id)) return;
+  const panel = document.getElementById("deny-reason-panel");
+  panel.hidden = false;
+});
+
+document.querySelectorAll(".reason-option").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (button.dataset.reason === "Other") {
+      document.querySelector(".other-reason-row").hidden = false;
+      document.getElementById("other-deny-reason").focus();
+      return;
+    }
+    finalizeDeny(button.dataset.reason);
+  });
+});
+
+document.getElementById("submit-other-deny").addEventListener("click", () => {
+  const input = document.getElementById("other-deny-reason");
+  const reason = input.value.trim();
+  if (reason) finalizeDeny(reason);
+  else input.focus();
+});
+
+document.getElementById("hold-btn").addEventListener("click", () => {
+  if (!activeScenario || heldIds.has(activeScenario.id)) return;
+  heldIds.add(activeScenario.id);
+  resolvedIds.delete(activeScenario.id);
+  deniedIds.delete(activeScenario.id);
+  appendDecisionLog("[SYSTEM] Held for later review — no action taken.");
+  renderCaseList();
+  updateIncidentCounter();
+  updateMapInfo(activeScenario);
+  setDecisionControlsDisabled(false);
+});
+
+function finalizeDeny(reason) {
+  if (!activeScenario || !reason) return;
+  deniedIds.add(activeScenario.id);
+  resolvedIds.delete(activeScenario.id);
+  heldIds.delete(activeScenario.id);
+  appendDecisionLog(`[SYSTEM] Human override — plan denied (${reason}). Case flagged for manual reassignment.`);
+  document.getElementById("deny-reason-panel").hidden = true;
+  document.querySelector(".other-reason-row").hidden = true;
+  document.getElementById("other-deny-reason").value = "";
+  setDecisionControlsDisabled(true);
+  renderCaseList();
+  updateIncidentCounter();
+  updateMapInfo(activeScenario);
+}
+
+function setDecisionControlsDisabled(disabled) {
+  ["approve-btn", "deny-btn", "hold-btn"].forEach((id) => {
+    document.getElementById(id).disabled = disabled;
+  });
+}
+
+function resetDecisionControls() {
+  const finalized = activeScenario && (resolvedIds.has(activeScenario.id) || deniedIds.has(activeScenario.id));
+  setDecisionControlsDisabled(Boolean(finalized));
+  document.getElementById("deny-reason-panel").hidden = true;
+  document.querySelector(".other-reason-row").hidden = true;
+  document.getElementById("other-deny-reason").value = "";
+}
+
+function appendDecisionLog(text) {
+  const log = document.getElementById("debate-log");
+  const line = document.createElement("article");
+  line.className = "debate-card system is-visible decision-log";
+  line.innerHTML = `<div class="debate-card-header"><span class="debate-agent">SYSTEM</span><time class="debate-time">${new Date().toLocaleTimeString([], { hour12: false })}</time></div><div class="debate-card-body"><div class="debate-message"></div></div>`;
+  line.querySelector(".debate-message").textContent = text.replace(/^\[SYSTEM\]\s*/, "");
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
 
 // Infrastructure Core Toggle — switches between Cloud Dependent / Edge Offline modes
 document.getElementById("grid-toggle").addEventListener("click", () => {
