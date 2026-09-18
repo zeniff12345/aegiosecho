@@ -3,28 +3,21 @@
  * Master dashboard orchestration script for Aegis Echo.
  */
 
-// Global variable to store loaded disaster scenarios
 let activeScenarios = [];
 
-/**
- * Toggles between Cloud Dependent Mode and 100% Offline Edge Mode
- */
 function handleModeToggle(checkbox) {
   const label = document.getElementById('mode-label');
   if (!label) return;
 
   if (checkbox.checked) {
     label.innerText = "DECENTRALIZED EDGE MODE - 100% OFFLINE";
-    label.style.color = "#10b981"; // Emerald green
+    label.style.color = "#10b981";
   } else {
     label.innerText = "CLOUD DEPENDENT MODE";
-    label.style.color = "#f3f4f6"; // Standard text
+    label.style.color = "#f3f4f6";
   }
 }
 
-/**
- * Updates Panel A, Panel B, and Panel C when a user clicks a crisis scenario
- */
 function selectScenarioData(scenario) {
   // Update Panel A: Hazard Tag and Biometric Stress Index
   const hazardTag = document.getElementById('hazard-tag-text');
@@ -44,17 +37,14 @@ function selectScenarioData(scenario) {
   const terminal = document.getElementById('terminal-stream');
   if (terminal) {
     terminal.innerHTML += `<p style="color:#f59e0b; margin-top: 4px;">[CASE LOADED]: ${scenario.name}</p>`;
-    terminal.scrollTop = terminal.scrollHeight; // Auto-scroll terminal
+    terminal.scrollTop = terminal.scrollHeight;
   }
 
-  // Enable Human-in-the-Loop Action Button
+  // Enable Action Button
   const authBtn = document.getElementById('auth-btn');
   if (authBtn) authBtn.disabled = false;
 }
 
-/**
- * Loads scenario data from JSON or uses fallback data
- */
 async function loadDashboardData() {
   const container = document.getElementById('case-list-container');
   if (!container) return;
@@ -86,7 +76,6 @@ async function loadDashboardData() {
 
   container.innerHTML = '';
 
-  // Generate dynamic case selection buttons
   activeScenarios.forEach((item, index) => {
     const btn = document.createElement('button');
     btn.className = 'case-btn';
@@ -94,14 +83,13 @@ async function loadDashboardData() {
     btn.onclick = () => selectScenarioData(item);
     container.appendChild(btn);
 
-    // Automatically load the first scenario by default
+    // Auto-select first scenario on load
     if (index === 0) {
       selectScenarioData(item);
     }
   });
 }
 
-// Initialize when DOM content is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
   loadDashboardData();
 });
