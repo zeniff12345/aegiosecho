@@ -289,3 +289,95 @@ body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+/* ==========================================================================
+   PANEL A COMPONENT STYLES (Sensor Fusion Engine)
+   ========================================================================== */
+
+/* Active Crisis Sites - Case Selection List */
+.case-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.case-btn {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.case-btn:hover {
+  border-color: var(--amber);
+  background: #1f293d;
+}
+
+/* Voice Triage Waveform Box */
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  background: #0d1322;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* Dynamic Waveform Bar Styling & Keyframe Animation */
+.bar {
+  flex: 1;
+  background: var(--amber);
+  height: 20%;
+  border-radius: 2px;
+  animation: wavePulse 1.2s infinite ease-in-out;
+}
+
+@keyframes wavePulse {
+  0%, 100% { height: 15%; }
+  50% { height: 95%; }
+}
+
+/* Biometric Stress Index Meter */
+.stress-container {
+  margin-top: 12px;
+}
+
+.stress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stress-meter {
+  width: 100%;
+  height: 10px;
+  background: #1a2333;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.stress-bar {
+  height: 100%;
+  background: var(--crimson);
+  transition: width 0.4s ease;
+}
+
+.hazard-tag {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+#hazard-tag-text {
+  color: var(--amber);
+  font-weight: bold;
+}
