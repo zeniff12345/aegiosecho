@@ -84,20 +84,57 @@ function runBootSequence() {
 
 // Speaker button — plays the transcript aloud using the browser's built-in
 // text-to-speech (works offline in most browsers, no API needed)
+let speechVoices = [];
+let activeUtterance = null;
+
+function refreshSpeechVoices() {
+  if (window.speechSynthesis) speechVoices = window.speechSynthesis.getVoices();
+}
+
+refreshSpeechVoices();
+if (window.speechSynthesis) {
+  if (typeof window.speechSynthesis.addEventListener === "function") {
+    window.speechSynthesis.addEventListener("voiceschanged", refreshSpeechVoices);
+  } else {
+    window.speechSynthesis.onvoiceschanged = refreshSpeechVoices;
+  }
+}
+
 document.getElementById("speak-btn").addEventListener("click", () => {
   if (!activeScenario) return;
   speakTranscript(activeScenario.transcript);
 });
 
 function speakTranscript(text) {
-  if (!window.speechSynthesis) {
-    alert("Text-to-speech isn't supported in this browser.");
+  const synth = window.speechSynthesis;
+  const button = document.getElementById("speak-btn");
+  if (!synth) {
+    button.title = "Text-to-speech isn't supported in this browser";
     return;
   }
-  speechSynthesis.cancel(); // stop any currently playing speech first
-  const utter = new SpeechSynthesisUtterance(text);
+
+  refreshSpeechVoices();
+  synth.cancel(); // Stop an earlier utterance before starting this click's fresh one.
+  const utter = new SpeechSynthesisUtterance(String(text || ""));
+  const preferredVoice = speechVoices.find(voice => /^en(-|_)/i.test(voice.lang)) || speechVoices[0];
+  if (preferredVoice) utter.voice = preferredVoice;
+  utter.lang = preferredVoice ? preferredVoice.lang : "en-US";
   utter.rate = 1.05;
-  speechSynthesis.speak(utter);
+  activeUtterance = utter;
+  button.classList.add("speaking");
+  button.setAttribute("aria-pressed", "true");
+  button.title = "Stop speaking";
+
+  const clearSpeakingState = () => {
+    if (activeUtterance !== utter) return;
+    activeUtterance = null;
+    button.classList.remove("speaking");
+    button.setAttribute("aria-pressed", "false");
+    button.title = "Play transcript aloud";
+  };
+  utter.onend = clearSpeakingState;
+  utter.onerror = clearSpeakingState;
+  synth.speak(utter);
 }
 
 // Live Voice Intake — real microphone speech-to-text (needs internet)

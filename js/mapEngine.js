@@ -1,34 +1,119 @@
 // MAP ENGINE — Panel B logic.
-// Renders a pulsing hazard ring at the active scenario's location,
-// and animates the rescue asset marker moving to it once approved.
+// Renders tactical hazard markers and animates the rescue asset after approval.
 
 function renderHazardRing(scenario) {
   const container = document.getElementById("hazard-markers");
+  const map = document.getElementById("map-area");
   container.innerHTML = "";
 
-  const ring = document.createElement("div");
-  ring.className = "hazard-ring" + (scenario.stressIndex > 85 ? " critical" : "");
-  ring.style.left = scenario.mapX + "%";
-  ring.style.top = scenario.mapY + "%";
-  container.appendChild(ring);
+  const incidents = typeof scenarios !== "undefined" && scenarios.length
+    ? scenarios
+    : [scenario];
+
+  incidents.forEach((incident) => {
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = "hazard-marker" + (incident.id === scenario.id ? " active" : "");
+    marker.style.left = incident.mapX + "%";
+    marker.style.top = incident.mapY + "%";
+    marker.setAttribute("aria-label", incident.name);
+
+    const ring = document.createElement("span");
+    ring.className = "hazard-ring" + (incident.stressIndex >= 85 ? " critical" : "");
+    ring.setAttribute("aria-hidden", "true");
+    marker.appendChild(ring);
+
+    const core = document.createElement("span");
+    core.className = "hazard-core";
+    core.setAttribute("aria-hidden", "true");
+    marker.appendChild(core);
+
+    const tooltip = document.createElement("span");
+    tooltip.className = "map-tooltip";
+    tooltip.hidden = true;
+    tooltip.innerHTML = `<strong>${incident.name}</strong><span>${incident.hazardTag}</span><span>Stress index: ${incident.stressIndex}</span>`;
+    marker.appendChild(tooltip);
+
+    marker.addEventListener("mouseenter", () => {
+      tooltip.hidden = false;
+    });
+    marker.addEventListener("mousemove", (event) => {
+      const bounds = map.getBoundingClientRect();
+      tooltip.style.left = `${event.clientX - bounds.left + 14}px`;
+      tooltip.style.top = `${event.clientY - bounds.top + 14}px`;
+    });
+    marker.addEventListener("mouseleave", () => {
+      tooltip.hidden = true;
+    });
+    marker.addEventListener("click", () => {
+      if (typeof selectScenario === "function") selectScenario(incident.id);
+    });
+
+    container.appendChild(marker);
+  });
+
+  map.style.setProperty("--map-pan-x", `${(50 - scenario.mapX) * 0.08}%`);
+  map.style.setProperty("--map-pan-y", `${(50 - scenario.mapY) * 0.08}%`);
 }
 
 const ASSET_ICONS = {
-  ground: "🚶",
-  boat: "🚤",
-  drone: "🛸",
-  air: "🚁"
+  ground: '<svg viewBox="0 0 32 24" aria-hidden="true"><path d="M4 15h20l3 4H2l2-4Zm3-5h12l3 5H5l2-5Zm3-5h5l2 5H8l2-5ZM7 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm16 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>',
+  drone: '<svg viewBox="0 0 32 24" aria-hidden="true"><path d="M14 9h4v6h-4zM5 5h5v3H7v3H4V8a3 3 0 0 1 1-3Zm17 0h5a3 3 0 0 1 1 3v3h-3V8h-3V5ZM5 13h3v3h2v3H5a3 3 0 0 1-3-3v-3h3Zm19 0h3v3a3 3 0 0 1-3 3h-5v-3h2v-3h3Z"/></svg>',
+  air: '<svg viewBox="0 0 32 24" aria-hidden="true"><path d="m15 3 2 1v6l8 3v2h-8v4l3 2v1H12v-1l3-2v-4H7v-2l8-3V4l2-1h-2Z"/></svg>'
 };
 
 function moveAssetToScenario(scenario) {
   const asset = document.getElementById("asset-marker");
-  asset.textContent = ASSET_ICONS[scenario.assetType] || "▲";
-  asset.style.left = scenario.mapX + "%";
-  asset.style.top = scenario.mapY + "%";
+  const map = document.getElementById("map-area");
+  const bounds = map.getBoundingClientRect();
+  const startX = parseFloat(asset.style.left || "10") / 100 * bounds.width;
+  const startY = parseFloat(asset.style.top || "85") / 100 * bounds.height;
+  const targetX = scenario.mapX / 100 * bounds.width;
+  const targetY = scenario.mapY / 100 * bounds.height;
+  const controlX = (startX + targetX) / 2 + (targetY - startY) * 0.18;
+  const controlY = (startY + targetY) / 2 - (targetX - startX) * 0.18;
+
+  asset.innerHTML = ASSET_ICONS[scenario.assetType] || ASSET_ICONS.ground;
+  asset.classList.add("moving");
+  drawAssetTrail(map, startX, startY, controlX, controlY, targetX, targetY);
+
+  const started = performance.now();
+  function animateAsset(now) {
+    const progress = Math.min(1, (now - started) / 1400);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const x = quadraticPoint(startX, controlX, targetX, eased);
+    const y = quadraticPoint(startY, controlY, targetY, eased);
+    asset.style.left = `${x / bounds.width * 100}%`;
+    asset.style.top = `${y / bounds.height * 100}%`;
+    if (progress < 1) requestAnimationFrame(animateAsset);
+    else asset.classList.remove("moving");
+  }
+  requestAnimationFrame(animateAsset);
 }
 
 function resetAssetPosition() {
   const asset = document.getElementById("asset-marker");
   asset.style.left = "10%";
   asset.style.top = "85%";
+  asset.innerHTML = ASSET_ICONS.ground;
+  asset.classList.remove("moving");
+}
+
+function quadraticPoint(start, control, end, progress) {
+  return (1 - progress) * (1 - progress) * start +
+    2 * (1 - progress) * progress * control +
+    progress * progress * end;
+}
+
+function drawAssetTrail(map, startX, startY, controlX, controlY, targetX, targetY) {
+  const trail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  trail.classList.add("asset-trail");
+  trail.setAttribute("viewBox", `0 0 ${map.clientWidth} ${map.clientHeight}`);
+  trail.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", `M ${startX} ${startY} Q ${controlX} ${controlY} ${targetX} ${targetY}`);
+  trail.appendChild(path);
+  map.querySelectorAll(".asset-trail").forEach((oldTrail) => oldTrail.remove());
+  map.appendChild(trail);
+  setTimeout(() => trail.remove(), 2200);
 }

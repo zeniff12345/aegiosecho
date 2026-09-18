@@ -6,34 +6,75 @@
 
 function startVoiceIntake() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById("live-intake-btn");
+  const status = document.getElementById("voice-status");
+
+  function setVoiceStatus(message) {
+    if (status) status.textContent = message;
+    if (btn) btn.setAttribute("aria-label", message || "Start live voice intake");
+  }
+
   if (!SpeechRecognition) {
-    alert("Speech recognition isn't supported in this browser. Try Chrome.");
+    setVoiceStatus("Speech recognition isn't supported in this browser. Try Chrome.");
     return;
   }
 
-  const btn = document.getElementById("live-intake-btn");
   btn.textContent = "🎙 Listening...";
   btn.disabled = true;
+  setVoiceStatus("Listening...");
 
   const recognition = new SpeechRecognition();
   recognition.lang = "en-US";
   recognition.interimResults = false;
+  recognition.continuous = false;
+
+  let completed = false;
+  let failed = false;
+
+  recognition.onstart = () => {
+    setVoiceStatus("Listening...");
+  };
 
   recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
+    const text = event.results && event.results[0] && event.results[0][0]
+      ? event.results[0][0].transcript.trim()
+      : "";
+    if (!text) {
+      failed = true;
+      setVoiceStatus("No speech detected.");
+      return;
+    }
+    completed = true;
+    setVoiceStatus("Done.");
     createLiveCaseFromTranscript(text);
   };
 
-  recognition.onerror = () => {
-    alert("Couldn't hear anything, or microphone/internet access was blocked. Try again.");
+  recognition.onerror = (event) => {
+    failed = true;
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      setVoiceStatus("No microphone permission.");
+    } else if (event.error === "no-speech") {
+      setVoiceStatus("No speech detected.");
+    } else {
+      setVoiceStatus("Voice intake failed. Check microphone and connection.");
+    }
   };
 
   recognition.onend = () => {
     btn.textContent = "🎙 Live Voice Intake (needs internet)";
     btn.disabled = false;
+    if (!completed && !failed) setVoiceStatus("Done.");
   };
 
-  recognition.start();
+  // Root cause: recognition errors and synchronous start failures had no persistent UI status.
+  try {
+    recognition.start();
+  } catch (error) {
+    failed = true;
+    btn.textContent = "🎙 Live Voice Intake (needs internet)";
+    btn.disabled = false;
+    setVoiceStatus("Voice intake failed to start. Check microphone permission.");
+  }
 }
 
 // Very simple keyword-based stress estimation from raw speech text.

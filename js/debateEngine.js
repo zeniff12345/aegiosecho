@@ -28,29 +28,45 @@ function buildRuleLines(scenario) {
     : String(logisticsResult.risk || scenario.logisticsRisk || "route constraints")
         .replace(/[.!?]+$/, "")
         .trim();
+  const constraint = String(logisticsResult.risk || reason || "the stated physical constraint")
+    .replace(/^Delayed:\s*/i, "")
+    .replace(/[.!?]+$/, "")
+    .trim();
+  const panicRating = Number(triageResult.panicRating) || 0;
+  const lifeThreat = String(triageResult.lifeThreat || "elevated").toUpperCase();
+  const urgent = panicRating >= 90 || lifeThreat === "CRITICAL";
+  const canOverride = urgent && scenario.assetSurvivable === true;
   const finalPlan = String(commanderResult.finalPlan || "").replace(/\.{2,}/g, ".");
 
   const lines = [
     { cls: "triage", text: `[TRIAGE] ${triageResult.proposal}` }
   ];
 
-  if (isDelayed) {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] Deployment delayed pending clearance: ${reason}.` });
-    if (alternative) {
-      lines.push({ cls: "logistics", text: `[LOGISTICS] Proposed alternative: ${alternative}.` });
-    }
-  } else if (objection) {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] ${objection}` });
-    lines.push({
-      cls: "logistics",
-      text: `[LOGISTICS] Proposed alternative: ${alternative || "alternate route/asset"}.`
-    });
+  if (objection || isDelayed) {
+    lines.push({ cls: "logistics", text: `[LOGISTICS] Hard constraint: ${constraint}.` });
+    const urgency = urgent
+      ? `Life threat ${lifeThreat}, panic rating ${panicRating} — requesting controlled override; time-critical.`
+      : `Panic rating ${panicRating}, life threat ${lifeThreat} — urgency noted, but the constraint remains active.`;
+    lines.push({ cls: "triage", text: `[TRIAGE] ${urgency}` });
+
+    const consequence = isDelayed
+      ? `Proceeding before clearance risks asset loss and mission failure; ${alternative || "the alternate asset"} remains the safer option.`
+      : `Ignoring ${constraint.toLowerCase()} risks asset loss and total mission failure; ${alternative || "the alternate asset"} is the viable fallback.`;
+    lines.push({ cls: "logistics", text: `[LOGISTICS] ${consequence}` });
   } else {
     lines.push({ cls: "logistics", text: `[LOGISTICS] Route confirmed. No objections.` });
   }
 
   if (objection || isDelayed) {
-    lines.push({ cls: "commander", text: `[SYSTEM] Cross-referencing asset telemetry...` });
+    lines.push({ cls: "system", text: `[SYSTEM] Cross-referencing asset telemetry...` });
+    const decision = canOverride
+      ? `OVERRIDE: ${String(triageResult.proposal || finalPlan).replace(/\s*immediately\.?$/i, "").trim()}.`
+      : finalPlan;
+    lines.push({
+      cls: "commander",
+      text: `[COMMANDER] Weighing Triage's urgency call against Logistics' ${constraint.toLowerCase()} — decision: ${decision}`
+    });
+    return lines;
   }
 
   lines.push({ cls: "commander", text: `[COMMANDER] ${finalPlan}` });
@@ -86,7 +102,7 @@ async function runDebate(scenario) {
     lines = buildRuleLines(scenario);
   }
 
-  // Type each line out with a delay so it visibly "runs" rather than appearing instantly.
+  // Render each exchange as a small live-response card.
   let i = 0;
   function typeNext() {
     if (i >= lines.length) {
@@ -95,15 +111,57 @@ async function runDebate(scenario) {
       return;
     }
     const line = lines[i];
-    const p = document.createElement("p");
-    p.className = line.cls;
-    const time = new Date().toLocaleTimeString([], { hour12: false });
-    p.textContent = `[${time}] ${line.text}`;
-    log.appendChild(p);
+    const prefix = line.text.match(/^\[([^\]]+)\]\s*/);
+    const label = prefix ? prefix[1] : line.cls.toUpperCase();
+    const message = prefix ? line.text.slice(prefix[0].length) : line.text;
+    const visualClass = label === "SYSTEM" ? "system" : line.cls;
+    const card = document.createElement("article");
+    card.className = `debate-card ${visualClass}`;
+
+    const header = document.createElement("div");
+    header.className = "debate-card-header";
+    const agentLabel = document.createElement("span");
+    agentLabel.className = "debate-agent";
+    agentLabel.textContent = label;
+    const time = document.createElement("time");
+    time.className = "debate-time";
+    time.textContent = new Date().toLocaleTimeString([], { hour12: false });
+    header.append(agentLabel, time);
+
+    const body = document.createElement("div");
+    body.className = "debate-card-body";
+    const typing = document.createElement("span");
+    typing.className = "typing-indicator";
+    typing.setAttribute("aria-label", `${label} is typing`);
+    for (let dot = 0; dot < 3; dot++) {
+      typing.appendChild(document.createElement("i"));
+    }
+    body.appendChild(typing);
+    card.append(header, body);
+    log.appendChild(card);
     log.scrollTop = log.scrollHeight;
     playBlip();
-    i++;
-    setTimeout(typeNext, 850 + Math.random() * 400); // slight randomness so it feels less robotic
+
+    setTimeout(() => {
+      typing.remove();
+      const messageNode = document.createElement("div");
+      messageNode.className = "debate-message";
+      body.appendChild(messageNode);
+      let character = 0;
+      function typeMessage() {
+        messageNode.textContent = message.slice(0, character);
+        log.scrollTop = log.scrollHeight;
+        if (character < message.length) {
+          character++;
+          setTimeout(typeMessage, 16);
+        } else {
+          card.classList.add("is-visible");
+          i++;
+          setTimeout(typeNext, 420);
+        }
+      }
+      typeMessage();
+    }, 480);
   }
   typeNext();
 }

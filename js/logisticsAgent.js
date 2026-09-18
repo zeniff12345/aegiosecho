@@ -11,10 +11,8 @@ function logisticsCheck(scenario) {
   let alternative = "ground team";
   if (assetType === "ground") {
     alternative = /\b(water|flood|river|current|bridge)\b/i.test(risk)
-      ? "boat unit"
+      ? "air unit"
       : "drone unit";
-  } else if (assetType === "boat") {
-    alternative = "air unit";
   } else if (assetType === "drone") {
     alternative = "ground team";
   }
@@ -23,9 +21,8 @@ function logisticsCheck(scenario) {
   if (!canProceed) {
     const restrictionByType = {
       drone: "Drone operation restricted by wind/visibility",
-      boat: "Boat operation restricted by current/water conditions",
       ground: "Ground access restricted by terrain/roads",
-      air: "Air operation restricted by weather/visibility"
+      air: "Air operation restricted by weather ceiling, landing-zone clearance, or fuel range"
     };
     const restriction = restrictionByType[assetType] || "Rescue asset restricted by access conditions";
     objection = delayed
