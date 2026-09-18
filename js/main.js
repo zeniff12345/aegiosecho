@@ -35,7 +35,12 @@ function selectScenarioData(scenario) {
   if (stressBar) stressBar.style.width = `${scenario.stressIndex || 0}%`;
   if (stressValue) stressValue.innerText = `${scenario.stressIndex || 0}%`;
 
-  // Update Panel C: Append log entry to Agent Terminal
+  // Update Panel B: Spatial Telemetry Tactical Map
+  if (typeof updateTacticalMap === 'function') {
+    updateTacticalMap(scenario);
+  }
+
+  // Update Panel C: Log selection in Agent Terminal
   const terminal = document.getElementById('terminal-stream');
   if (terminal) {
     terminal.innerHTML += `<p style="color:#f59e0b; margin-top: 4px;">[CASE LOADED]: ${scenario.name}</p>`;
@@ -48,7 +53,7 @@ function selectScenarioData(scenario) {
 }
 
 /**
- * Loads scenario data from json or uses fallback data
+ * Loads scenario data from JSON or uses fallback data
  */
 async function loadDashboardData() {
   const container = document.getElementById('case-list-container');
@@ -59,37 +64,44 @@ async function loadDashboardData() {
     activeScenarios = await response.json();
   } catch (error) {
     console.warn("Could not load scenarios.json, utilizing fallback data.", error);
-    // Fallback dataset if scenarios.json is empty or missing
     activeScenarios = [
       {
         id: "case-01",
         name: "Balkhu River Flash Flood",
         hazardTag: "Rushing water detected",
-        stressIndex: 85
+        stressIndex: 85,
+        mapX: 45,
+        mapY: 60
       },
       {
         id: "case-02",
         name: "Sindhupalchok Landslide",
         hazardTag: "Debris flow hazard",
-        stressIndex: 65
+        stressIndex: 65,
+        mapX: 70,
+        mapY: 35
       }
     ];
   }
 
-  // Clear existing buttons/loading text
   container.innerHTML = '';
 
-  // Generate clickable case buttons for Panel A
-  activeScenarios.forEach((item) => {
+  // Generate dynamic case selection buttons
+  activeScenarios.forEach((item, index) => {
     const btn = document.createElement('button');
     btn.className = 'case-btn';
     btn.innerText = item.name;
     btn.onclick = () => selectScenarioData(item);
     container.appendChild(btn);
+
+    // Automatically load the first scenario by default
+    if (index === 0) {
+      selectScenarioData(item);
+    }
   });
 }
 
-// Initialize on DOM Ready
+// Initialize when DOM content is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
   loadDashboardData();
 });
