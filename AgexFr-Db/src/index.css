@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --color-void: #0a0b0f;
+  --color-panel: #12141a;
+  --color-panel-raised: #181b23;
+  --color-border: #262a35;
+  --color-border-bright: #3a3f4d;
+
+  --color-slate: #8891a3;
+  --color-slate-bright: #c4cad6;
+
+  --color-amber: #ffb020;
+  --color-amber-dim: rgba(255, 176, 32, 0.15);
+  --color-emerald: #22d38a;
+  --color-emerald-dim: rgba(34, 211, 138, 0.15);
+  --color-crimson: #ff3b4e;
+  --color-crimson-dim: rgba(255, 59, 78, 0.15);
+  --color-cyan: #35c4e8;
+  --color-cyan-dim: rgba(53, 196, 232, 0.15);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-void);
+  color: var(--color-slate-bright);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+::selection {
+  background: var(--color-cyan-dim);
+  color: var(--color-cyan);
+}
+
+/* thin tactical scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-bright) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-bright);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
