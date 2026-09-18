@@ -3,19 +3,48 @@
 // This is intentionally simple rule-based logic for the demo — no real ML needed.
 
 function triageAssess(scenario) {
-  // In a real system this would call an NLP model. For the demo, we derive
-  // a "panic rating" and "life threat classification" from the mock data fields.
   const panicRating = scenario.stressIndex; // 0-100
   let lifeThreat = "LOW";
   if (panicRating > 85) lifeThreat = "CRITICAL";
   else if (panicRating > 60) lifeThreat = "HIGH";
+  else if (panicRating > 30) lifeThreat = "MODERATE";
+
+  const transcript = String(scenario.transcript || "").toLowerCase();
+  const clarityKeywords = [
+    "trapped", "rising", "collapsed", "collapse", "cracking", "fire",
+    "smoke", "buried", "stranded", "stuck", "elderly", "children",
+    "explosion", "gas", "aftershock", "swept", "under debris"
+  ];
+  const matchedKeywords = clarityKeywords.filter(keyword => transcript.includes(keyword)).length;
+  const confidence = Math.min(100, 35 + matchedKeywords * 10);
+  const location = scenario.name || "the incident site";
+  const hazard = scenario.hazardTag || "active hazard";
+  const assetNames = {
+    ground: "ground team",
+    boat: "boat unit",
+    drone: "drone unit",
+    air: "air unit"
+  };
+  const asset = assetNames[scenario.assetType] || `${scenario.assetType || "rescue"} asset`;
+
+  let proposal;
+  if (lifeThreat === "CRITICAL") {
+    proposal = `CRITICAL: ${hazard} at ${location} — deploy the ${asset} now.`;
+  } else if (lifeThreat === "HIGH") {
+    proposal = `HIGH threat: ${hazard}. Dispatch the ${asset} to ${location} immediately.`;
+  } else if (lifeThreat === "MODERATE") {
+    proposal = `MODERATE threat: ${hazard}. Prepare the ${asset} for ${location} and confirm access.`;
+  } else {
+    proposal = `LOW threat: ${hazard}. Stage the ${asset} at ${location} for a controlled response.`;
+  }
 
   return {
     agent: "Triage",
     panicRating,
     lifeThreat,
     hazardTag: scenario.hazardTag,
-    proposal: `Deploy nearest rescue asset to ${scenario.name} immediately. Life threat: ${lifeThreat}.`
+    proposal,
+    confidence
   };
-} 
+}
 

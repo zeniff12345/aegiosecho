@@ -13,19 +13,47 @@ function buildRuleLines(scenario) {
   const triageResult = triageAssess(scenario);
   const logisticsResult = logisticsCheck(scenario);
   const commanderResult = commanderResolve(triageResult, logisticsResult, scenario);
+  const objection = typeof logisticsResult.objection === "string"
+    ? logisticsResult.objection.trim()
+    : "";
+  const isDelayed = String(logisticsResult.status || "").toUpperCase() === "DELAYED";
+  const objectionText = objection.replace(/^Objection:\s*/i, "").trim();
+  const recommendationMarker = /\bRecommend(?:s|ed)?\s+/i;
+  const recommendation = objectionText.match(recommendationMarker);
+  const alternative = recommendation
+    ? objectionText.slice(recommendation.index + recommendation[0].length).replace(/[.!?]+$/, "").trim()
+    : "";
+  const reason = recommendation
+    ? objectionText.slice(0, recommendation.index).trim().replace(/[.!?]+$/, "").trim()
+    : String(logisticsResult.risk || scenario.logisticsRisk || "route constraints")
+        .replace(/[.!?]+$/, "")
+        .trim();
+  const finalPlan = String(commanderResult.finalPlan || "").replace(/\.{2,}/g, ".");
 
   const lines = [
     { cls: "triage", text: `[TRIAGE] ${triageResult.proposal}` }
   ];
 
-  if (logisticsResult.objection) {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] ${logisticsResult.objection}` });
-    lines.push({ cls: "commander", text: `[COMMANDER] Conflict detected. Running Adversarial Consensus Loop...` });
+  if (isDelayed) {
+    lines.push({ cls: "logistics", text: `[LOGISTICS] Deployment delayed pending clearance: ${reason}.` });
+    if (alternative) {
+      lines.push({ cls: "logistics", text: `[LOGISTICS] Proposed alternative: ${alternative}.` });
+    }
+  } else if (objection) {
+    lines.push({ cls: "logistics", text: `[LOGISTICS] ${objection}` });
+    lines.push({
+      cls: "logistics",
+      text: `[LOGISTICS] Proposed alternative: ${alternative || "alternate route/asset"}.`
+    });
   } else {
     lines.push({ cls: "logistics", text: `[LOGISTICS] Route confirmed. No objections.` });
   }
 
-  lines.push({ cls: "commander", text: `[COMMANDER] ${commanderResult.finalPlan}` });
+  if (objection || isDelayed) {
+    lines.push({ cls: "commander", text: `[SYSTEM] Cross-referencing asset telemetry...` });
+  }
+
+  lines.push({ cls: "commander", text: `[COMMANDER] ${finalPlan}` });
   return lines;
 }
 
