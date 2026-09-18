@@ -1,132 +1,95 @@
-// MAIN.JS — Person 1 (Frontend/UI Lead) owns this file.
-// It loads mock data, populates Panel A's case list, and wires up interactions.
+/**
+ * js/main.js
+ * Master dashboard orchestration script for Aegis Echo.
+ */
 
-let scenarios = [];
-let resolvedIds = new Set();
+// Global variable to store loaded disaster scenarios
+let activeScenarios = [];
 
-async function loadScenarios() {
-  const res = await fetch("data/scenarios.json");
-  scenarios = await res.json();
-  renderCaseList();
-  updateIncidentCounter();
+/**
+ * Toggles between Cloud Dependent Mode and 100% Offline Edge Mode
+ */
+function handleModeToggle(checkbox) {
+  const label = document.getElementById('mode-label');
+  if (!label) return;
+
+  if (checkbox.checked) {
+    label.innerText = "DECENTRALIZED EDGE MODE - 100% OFFLINE";
+    label.style.color = "#10b981"; // Emerald green
+  } else {
+    label.innerText = "CLOUD DEPENDENT MODE";
+    label.style.color = "#f3f4f6"; // Standard text
+  }
 }
 
-function renderCaseList() {
-  const list = document.getElementById("case-list");
-  list.innerHTML = "";
-  scenarios.forEach((s) => {
-    const btn = document.createElement("button");
-    btn.textContent = (resolvedIds.has(s.id) ? "✔ " : "") + s.name;
-    if (resolvedIds.has(s.id)) btn.classList.add("resolved");
-    btn.onclick = () => selectScenario(s.id);
-    list.appendChild(btn);
+/**
+ * Updates Panel A, Panel B, and Panel C when a user clicks a crisis scenario
+ */
+function selectScenarioData(scenario) {
+  // Update Panel A: Hazard Tag and Biometric Stress Index
+  const hazardTag = document.getElementById('hazard-tag-text');
+  const stressBar = document.getElementById('stress-bar');
+  const stressValue = document.getElementById('stress-value');
+
+  if (hazardTag) hazardTag.innerText = scenario.hazardTag || "Active Alert";
+  if (stressBar) stressBar.style.width = `${scenario.stressIndex || 0}%`;
+  if (stressValue) stressValue.innerText = `${scenario.stressIndex || 0}%`;
+
+  // Update Panel C: Append log entry to Agent Terminal
+  const terminal = document.getElementById('terminal-stream');
+  if (terminal) {
+    terminal.innerHTML += `<p style="color:#f59e0b; margin-top: 4px;">[CASE LOADED]: ${scenario.name}</p>`;
+    terminal.scrollTop = terminal.scrollHeight; // Auto-scroll terminal
+  }
+
+  // Enable Human-in-the-Loop Action Button
+  const authBtn = document.getElementById('auth-btn');
+  if (authBtn) authBtn.disabled = false;
+}
+
+/**
+ * Loads scenario data from json or uses fallback data
+ */
+async function loadDashboardData() {
+  const container = document.getElementById('case-list-container');
+  if (!container) return;
+
+  try {
+    const response = await fetch('data/scenarios.json');
+    activeScenarios = await response.json();
+  } catch (error) {
+    console.warn("Could not load scenarios.json, utilizing fallback data.", error);
+    // Fallback dataset if scenarios.json is empty or missing
+    activeScenarios = [
+      {
+        id: "case-01",
+        name: "Balkhu River Flash Flood",
+        hazardTag: "Rushing water detected",
+        stressIndex: 85
+      },
+      {
+        id: "case-02",
+        name: "Sindhupalchok Landslide",
+        hazardTag: "Debris flow hazard",
+        stressIndex: 65
+      }
+    ];
+  }
+
+  // Clear existing buttons/loading text
+  container.innerHTML = '';
+
+  // Generate clickable case buttons for Panel A
+  activeScenarios.forEach((item) => {
+    const btn = document.createElement('button');
+    btn.className = 'case-btn';
+    btn.innerText = item.name;
+    btn.onclick = () => selectScenarioData(item);
+    container.appendChild(btn);
   });
 }
 
-function updateIncidentCounter() {
-  const active = scenarios.length - resolvedIds.size;
-  document.getElementById("incident-counter").textContent = `${active} ACTIVE INCIDENTS`;
-}
-
-let activeScenario = null;
-
-function selectScenario(id) {
-  const scenario = scenarios.find((s) => s.id === id);
-  if (!scenario) return;
-  activeScenario = scenario;
-
-  // Update Panel A voice module
-  document.getElementById("transcript").textContent = scenario.transcript;
-  document.getElementById("hazard-tag").textContent = scenario.hazardTag;
-  document.getElementById("stress-fill").style.width = scenario.stressIndex + "%";
-  renderWaveform();
-
-  // Update Panel B map
-  renderHazardRing(scenario);
-  resetAssetPosition();
-
-  // Trigger Panel C debate for this scenario
-  runDebate(scenario);
-}
-
-document.getElementById("approve-btn").addEventListener("click", () => {
-  if (!activeScenario) return;
-  moveAssetToScenario(activeScenario);
-  playConfirm();
-  resolvedIds.add(activeScenario.id);
-  renderCaseList();
-  updateIncidentCounter();
+// Initialize on DOM Ready
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboardData();
 });
-
-// Infrastructure Core Toggle — switches between Cloud Dependent / Edge Offline modes
-document.getElementById("grid-toggle").addEventListener("click", () => {
-  const toggle = document.getElementById("grid-toggle");
-  const isOffline = toggle.classList.contains("offline");
-  if (isOffline) {
-    toggle.classList.remove("offline");
-    toggle.classList.add("online");
-    toggle.textContent = "CLOUD DEPENDENT MODE";
-  } else {
-    toggle.classList.remove("online");
-    toggle.classList.add("offline");
-    toggle.textContent = "DECENTRALIZED EDGE MODE — 100% OFFLINE";
-  }
-});
-
-// Boot sequence — fades out after ~2.5s to reveal the dashboard
-function runBootSequence() {
-  const overlay = document.getElementById("boot-overlay");
-  setTimeout(() => {
-    overlay.classList.add("boot-hidden");
-    setTimeout(() => overlay.remove(), 800);
-  }, 2500);
-}
-
-// Speaker button — plays the transcript aloud using the browser's built-in
-// text-to-speech (works offline in most browsers, no API needed)
-document.getElementById("speak-btn").addEventListener("click", () => {
-  if (!activeScenario) return;
-  speakTranscript(activeScenario.transcript);
-});
-
-function speakTranscript(text) {
-  if (!window.speechSynthesis) {
-    alert("Text-to-speech isn't supported in this browser.");
-    return;
-  }
-  speechSynthesis.cancel(); // stop any currently playing speech first
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = 1.05;
-  speechSynthesis.speak(utter);
-}
-
-// Live Voice Intake — real microphone speech-to-text (needs internet)
-document.getElementById("live-intake-btn").addEventListener("click", startVoiceIntake);
-
-// AI Mode toggle — switches between rule-based (default, offline-safe) and
-// real AI reasoning (needs your own API key + internet)
-document.getElementById("ai-mode-toggle").addEventListener("click", () => {
-  const btn = document.getElementById("ai-mode-toggle");
-  if (!USE_REAL_AI) {
-    const key = prompt(
-      "Enter your Anthropic API key to enable real AI reasoning.\n" +
-      "Get one at console.anthropic.com — never commit this key to GitHub.\n" +
-      "Leave blank to cancel and stay in rule-based mode."
-    );
-    if (key && key.trim()) {
-      AEGIS_API_KEY = key.trim();
-      USE_REAL_AI = true;
-      btn.textContent = "🧠 REAL AI MODE";
-      btn.classList.add("ai-active");
-    }
-  } else {
-    USE_REAL_AI = false;
-    AEGIS_API_KEY = null;
-    btn.textContent = "🧠 RULE-BASED MODE";
-    btn.classList.remove("ai-active");
-  }
-});
-
-renderWaveform();
-loadScenarios();
-runBootSequence();
