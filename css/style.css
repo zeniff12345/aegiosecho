@@ -189,18 +189,118 @@ body {
 input:checked + .slider { background-color: var(--emerald); }
 input:checked + .slider:before { transform: translateX(22px); }
 
-/* Panels B & C Styling */
+/* ==========================================================================
+   UPDATED PANEL B & C STYLING (Spatial Telemetry Map HUD)
+   ========================================================================== */
+
+/* Fixed Map Area Container */
 .map-area {
-  background: #030712;
+  position: relative;
+  background-color: #030712;
   border: 1px dashed var(--emerald);
-  height: 100%;
-  min-height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--emerald);
+  height: 480px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 4px;
 }
 
+/* Background Grid Overlay */
+.map-grid-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(rgba(16, 185, 129, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.12) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Animated Radar Scanline */
+.radar-scanline {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 12px var(--emerald);
+  animation: scanSweep 3.5s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes scanSweep {
+  0% { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* Pulsing Crimson Hazard Ring */
+.hazard-ring-pulse {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--crimson);
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.2);
+  animation: pulseRing 1.8s infinite ease-out;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.hazard-label {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: bold;
+  background: var(--crimson);
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+@keyframes pulseRing {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+/* Deployed Rescue Asset Markers */
+.asset-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 0.72rem;
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--emerald);
+  color: var(--emerald);
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  transition: all 0.6s ease-in-out;
+}
+
+/* Telemetry Coordinates Box Overlay */
+.map-coordinates-box {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--emerald);
+  background: rgba(3, 7, 18, 0.9);
+  padding: 6px 12px;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 3px;
+  z-index: 5;
+}
+
+/* Panel C Terminal & Action Button */
 .terminal-stream {
   flex: 1;
   background: #000;
