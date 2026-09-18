@@ -25,26 +25,44 @@
 
   <main class="dashboard">
 
-    <!-- PANEL A: Sensor Fusion Feed -->
-    <section id="panel-a" class="panel">
-      <h2>Sensor Fusion Feed</h2>
-      <button id="live-intake-btn" class="live-intake-btn">🎙 Live Voice Intake (needs internet)</button>
-      <div id="case-list" class="case-list">
-        <!-- scenario buttons get inserted here by main.js -->
+    <!-- PANEL A: Multimodal Sensor Fusion Feed -->
+    <section class="panel panel-left">
+  <h2>1. SENSOR FUSION ENGINE</h2>
+
+  <!-- 1. Active Crisis Cases List -->
+  <div class="case-section">
+    <h3>ACTIVE CRISIS SITES</h3>
+    <div class="case-list" id="case-list-container">
+      <!-- main.js will dynamically insert scenario buttons here -->
+    </div>
+  </div>
+
+  <!-- 2. Voice Triage Module -->
+  <div class="voice-module">
+    <h3>VOICE TRIAGE MODULE</h3>
+    
+    <!-- Waveform container targeted by waveform.js -->
+    <div class="waveform" id="waveform-container">
+      <!-- waveform.js will dynamically insert 8 animated bars here -->
+    </div>
+
+    <!-- Hazard Tag Display -->
+    <p class="hazard-tag">
+      HAZARD: <span id="hazard-tag-text">Select a case...</span>
+    </p>
+
+    <!-- 3. Biometric Stress Meter -->
+    <div class="stress-container">
+      <div class="stress-label">
+        <span>VICTIM STRESS INDEX</span>
+        <span id="stress-value">0%</span>
       </div>
-      <div class="voice-module">
-        <div id="waveform" class="waveform"></div>
-        <div class="transcript-row">
-          <p id="transcript" class="transcript">Select a case to load transcript...</p>
-          <button id="speak-btn" class="speak-btn" title="Play transcript aloud">🔊</button>
-        </div>
-        <p id="hazard-tag" class="hazard-tag"></p>
-        <div class="stress-bar-wrap">
-          <span>Stress Index</span>
-          <div class="stress-bar"><div id="stress-fill" class="stress-fill"></div></div>
-        </div>
+      <div class="stress-meter">
+        <div class="stress-bar" id="stress-bar" style="width: 0%;"></div>
       </div>
-    </section>
+    </div>
+  </div>
+</section>
 
     <!-- PANEL B: Tactical Map -->
     <section id="panel-b" class="panel">
