@@ -43,11 +43,24 @@ text-to-speech. Works offline in most browsers/OS. Fully safe to use in your
 offline demo.
 
 **🎙 Live Voice Intake** — click it, allow microphone access, speak a mock
-distress call, and it creates a real new case from what you said (with a
-rough auto-estimated stress score based on keywords). **This requires
-internet** — Chrome sends the audio to Google's servers to transcribe it —
-so only use this as a separate "look, it can take live input" showcase, NOT
-during the "unplug the internet" moment.
+distress call, and it creates a real new case from what you said. This now
+fuses TWO independent signals (genuine multimodal sensor fusion, not just a
+single text classifier):
+- **Semantic** — the speech-to-text transcript, scored by keyword urgency.
+  In Chrome this needs internet (audio is sent to Google's servers to
+  transcribe).
+- **Acoustic** — the raw microphone waveform (volume + volatility), analyzed
+  locally in-browser with the Web Audio API. Never leaves the device, no
+  network required.
+
+The two scores are blended into one fused stress index. If the network/
+transcript layer is unavailable — offline, unsupported browser, no speech
+recognized — the acoustic layer alone still produces a usable case instead
+of failing outright, so **this is now safe to use straight through the
+"unplug the internet" moment**: it just runs in acoustic-only mode instead
+of full fusion. The debate log and voice-status line show which modalities
+actually contributed (semantic, acoustic, or both) so it's never a black
+box.
 
 **🧠 AI Mode toggle** — switches from rule-based logic (default, always
 works, fully offline) to real Claude API calls for the debate reasoning.
