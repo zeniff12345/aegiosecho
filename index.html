@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- Top Command Header -->
+  <!-- Top Tactical Header -->
   <header class="command-header">
     <div class="logo-group">
       <h1>AEGIS ECHO</h1>
@@ -25,27 +25,33 @@
     </div>
   </header>
 
-  <!-- 3-Panel Tactical Grid Layout -->
+  <!-- 3-Panel Tactical Dashboard Layout -->
   <main class="dashboard-grid">
     
     <!-- PANEL A: Sensor Fusion Engine -->
     <section class="panel panel-left">
       <h2 class="panel-title">1. SENSOR FUSION ENGINE</h2>
       
+      <!-- Active Crisis Case Selection -->
       <div class="section-box">
         <h3>ACTIVE CRISIS SITES</h3>
         <div id="case-list-container" class="case-list">
-          <!-- Dynamic scenario buttons injected here by main.js -->
+          <p class="loading-text">Loading scenarios...</p>
         </div>
       </div>
 
+      <!-- Voice Triage & Acoustic Detection -->
       <div class="section-box">
         <h3>VOICE TRIAGE MODULE</h3>
+        
+        <!-- Animated Audio Waveform Container -->
         <div class="waveform" id="waveform-container">
-          <!-- Waveform bars injected here by waveform.js -->
+          <!-- Populated by waveform.js -->
         </div>
+
         <p class="hazard-tag">HAZARD: <span id="hazard-tag-text">Select a case...</span></p>
 
+        <!-- Biometric Stress Index Progress Bar -->
         <div class="stress-container">
           <div class="stress-label">
             <span>VICTIM STRESS INDEX</span>
@@ -62,7 +68,7 @@
     <section class="panel panel-center">
       <h2 class="panel-title">2. SPATIAL TELEMETRY</h2>
       <div class="map-area" id="map-area">
-        <p class="map-placeholder">[TACTICAL GRID MAP]</p>
+        <p class="map-placeholder">[TACTICAL GRID MAP INITIALIZING...]</p>
       </div>
     </section>
 
@@ -70,7 +76,7 @@
     <section class="panel panel-right">
       <h2 class="panel-title">3. AGENT CONSENSUS TERMINAL</h2>
       <div class="terminal-stream" id="terminal-stream">
-        <p class="sys-line">[SYSTEM INITIALIZED] Awaiting incident selection...</p>
+        <p class="sys-line">[SYSTEM INITIALIZED] Standing by for crisis selection...</p>
       </div>
       <button id="auth-btn" class="crimson-btn" disabled>
         AUTHORIZE SPECIFIC CRITICAL SWARM ACTIONS
@@ -79,9 +85,10 @@
 
   </main>
 
-  <!-- Script Imports -->
+  <!-- Script Imports (Loaded in correct order) -->
   <script src="js/waveform.js"></script>
   <script src="js/mapEngine.js"></script>
+  <script src="js/debateEngine.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
