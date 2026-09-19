@@ -11,11 +11,20 @@
 
 let debateGeneration = 0;
 const debateTimers = new Set();
+let activePlayback = null;
+let playbackSpeed = 1;
+const PLAYBACK_SPEEDS = [1, 2, 0.5];
 
 function cancelDebate() {
   debateGeneration++;
   debateTimers.forEach((timer) => clearTimeout(timer));
   debateTimers.clear();
+  if (activePlayback) {
+    activePlayback.timers.forEach((timer) => clearTimeout(timer));
+    activePlayback.timers.clear();
+    activePlayback.typingIndicator?.remove();
+  }
+  activePlayback = null;
 }
 
 function scheduleDebate(callback, delay, generation) {
@@ -25,6 +34,205 @@ function scheduleDebate(callback, delay, generation) {
   }, delay);
   debateTimers.add(timer);
 }
+
+function lineBadge(line, lineIndex) {
+  if (line.cls === "system") return "";
+  if (line.cls === "commander") return "RESOLVE";
+  if (line.cls === "triage") return lineIndex === 0 ? "PROPOSE" : "COUNTER";
+  if (line.cls === "logistics") {
+    return /objection|hard constraint|delayed/i.test(line.text) ? "FLAG/REJECT" : "COUNTER";
+  }
+  return "";
+}
+
+function playbackLines(lines) {
+  return lines.filter((line) => !(
+    line.cls === "logistics" && /Route confirmed\. No objections\./i.test(line.text)
+  ));
+}
+
+function setDebateProgress(current, total, complete = false) {
+  const progress = document.getElementById("debate-progress");
+  if (!progress) return;
+  progress.textContent = complete
+    ? "CONSENSUS REACHED"
+    : `AWAITING CONSENSUS... (${current}/${total})`;
+}
+
+function setPlaybackControls(state) {
+  const pause = document.getElementById("debate-pause");
+  const replay = document.getElementById("debate-replay");
+  const speed = document.getElementById("debate-speed");
+  if (pause) {
+    pause.disabled = state === "idle";
+    pause.textContent = state === "paused" ? "RESUME" : "PAUSE";
+  }
+  if (replay) replay.disabled = state === "idle";
+  if (speed) {
+    speed.disabled = state === "idle";
+    speed.textContent = `${playbackSpeed}x`;
+  }
+}
+
+function createTypingIndicator(line) {
+  const log = document.getElementById("debate-log");
+  const indicator = document.createElement("div");
+  indicator.className = `debate-typing ${line.cls}`;
+  const prefix = line.text.match(/^\[([^\]]+)\]/);
+  const label = prefix ? prefix[1] : line.cls.toUpperCase();
+  indicator.innerHTML = `<strong>${label} TYPING</strong><span class="typing-indicator" aria-hidden="true"><i></i><i></i><i></i></span>`;
+  log.appendChild(indicator);
+  log.scrollTop = log.scrollHeight;
+  return indicator;
+}
+
+function schedulePlayback(callback, delay) {
+  if (!activePlayback || activePlayback.paused) return;
+  const timer = setTimeout(() => {
+    if (!activePlayback || activePlayback.paused) return;
+    activePlayback.timers.delete(timer);
+    callback();
+  }, delay / playbackSpeed);
+  activePlayback.timers.add(timer);
+}
+
+function renderPlaybackCard(line, lineIndex) {
+  const log = document.getElementById("debate-log");
+  const prefix = line.text.match(/^\[([^\]]+)\]\s*/);
+  const label = prefix ? prefix[1] : line.cls.toUpperCase();
+  const message = line.cls === "system" ? line.text : prefix ? line.text.slice(prefix[0].length) : line.text;
+  const turn = String(lineIndex + 1).padStart(2, "0");
+  const badge = lineBadge(line, lineIndex);
+  const card = document.createElement("article");
+  card.className = `debate-card ${line.cls}`;
+
+  const header = document.createElement("div");
+  header.className = "debate-card-header";
+  const agentLabel = document.createElement("span");
+  agentLabel.className = "debate-agent";
+  agentLabel.textContent = `${label} · ${turn}${badge ? ` · ${badge}` : ""}`;
+  const time = document.createElement("time");
+  time.className = "debate-time";
+  time.textContent = new Date().toLocaleTimeString([], { hour12: false });
+  header.append(agentLabel, time);
+
+  const body = document.createElement("div");
+  body.className = "debate-card-body";
+  const messageNode = document.createElement("div");
+  messageNode.className = "debate-message";
+  body.appendChild(messageNode);
+  card.append(header, body);
+  log.appendChild(card);
+  log.scrollTop = log.scrollHeight;
+  return { card, message, messageNode };
+}
+
+function playNextLine() {
+  if (!activePlayback || activePlayback.paused) return;
+  if (activePlayback.lineIndex >= activePlayback.lines.length) {
+    activePlayback.phase = "done";
+    setDebateProgress(activePlayback.lines.length, activePlayback.lines.length, true);
+    setPlaybackControls("done");
+    const finalized = resolvedIds.has(activePlayback.scenario.id) || deniedIds.has(activePlayback.scenario.id);
+    setDecisionControlsDisabled(finalized);
+    playConfirm();
+    return;
+  }
+
+  const lineIndex = activePlayback.lineIndex;
+  const line = activePlayback.lines[lineIndex];
+  activePlayback.phase = "indicator";
+  activePlayback.typingIndicator = createTypingIndicator(line);
+  schedulePlayback(() => {
+    activePlayback.typingIndicator?.remove();
+    activePlayback.typingIndicator = null;
+    const rendered = renderPlaybackCard(line, lineIndex);
+    activePlayback.card = rendered.card;
+    activePlayback.messageNode = rendered.messageNode;
+    activePlayback.message = rendered.message;
+    activePlayback.character = 0;
+    activePlayback.phase = "typing";
+    typePlaybackMessage();
+  }, 480);
+}
+
+function typePlaybackMessage() {
+  if (!activePlayback || activePlayback.paused) return;
+  const playback = activePlayback;
+  playback.messageNode.textContent = playback.message.slice(0, playback.character);
+  const log = document.getElementById("debate-log");
+  log.scrollTop = log.scrollHeight;
+  if (playback.character < playback.message.length) {
+    playback.character++;
+    schedulePlayback(typePlaybackMessage, 16);
+    return;
+  }
+  playback.card.classList.add("is-visible");
+  playback.phase = "waiting";
+  playback.lineIndex++;
+  setDebateProgress(playback.lineIndex, playback.lines.length);
+  schedulePlayback(playNextLine, 420);
+}
+
+function startPlayback(scenario, lines) {
+  const log = document.getElementById("debate-log");
+  activePlayback = {
+    scenario,
+    lines: playbackLines(lines),
+    lineIndex: 0,
+    character: 0,
+    message: "",
+    messageNode: null,
+    card: null,
+    typingIndicator: null,
+    phase: "playing",
+    paused: false,
+    timers: new Set()
+  };
+  log.innerHTML = "";
+  setDebateProgress(0, activePlayback.lines.length);
+  setPlaybackControls("playing");
+  playNextLine();
+}
+
+function togglePlaybackPause() {
+  if (!activePlayback || activePlayback.phase === "done") return;
+  if (activePlayback.paused) {
+    activePlayback.paused = false;
+    setPlaybackControls("playing");
+    if (activePlayback.phase === "typing") typePlaybackMessage();
+    else if (activePlayback.phase === "indicator" || activePlayback.phase === "waiting") {
+      if (activePlayback.phase === "indicator") {
+        activePlayback.typingIndicator?.remove();
+        activePlayback.typingIndicator = null;
+      }
+      playNextLine();
+    }
+    return;
+  }
+  activePlayback.paused = true;
+  activePlayback.timers.forEach((timer) => clearTimeout(timer));
+  activePlayback.timers.clear();
+  setPlaybackControls("paused");
+}
+
+function replayDebate() {
+  if (!activePlayback) return;
+  const { scenario, lines } = activePlayback;
+  activePlayback.timers.forEach((timer) => clearTimeout(timer));
+  activePlayback.typingIndicator?.remove();
+  startPlayback(scenario, lines);
+}
+
+function cyclePlaybackSpeed() {
+  const currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+  playbackSpeed = PLAYBACK_SPEEDS[(currentIndex + 1) % PLAYBACK_SPEEDS.length];
+  setPlaybackControls(activePlayback ? (activePlayback.paused ? "paused" : activePlayback.phase === "done" ? "done" : "playing") : "idle");
+}
+
+document.getElementById("debate-pause").addEventListener("click", togglePlaybackPause);
+document.getElementById("debate-replay").addEventListener("click", replayDebate);
+document.getElementById("debate-speed").addEventListener("click", cyclePlaybackSpeed);
 
 function buildRuleLines(scenario) {
   const triageResult = triageAssess(scenario);
@@ -37,9 +245,13 @@ function buildRuleLines(scenario) {
   const objectionText = objection.replace(/^Objection:\s*/i, "").trim();
   const recommendationMarker = /\bRecommend(?:s|ed)?\s+/i;
   const recommendation = objectionText.match(recommendationMarker);
-  const alternative = recommendation
+  let alternative = recommendation
     ? objectionText.slice(recommendation.index + recommendation[0].length).replace(/[.!?]+$/, "").trim()
     : "";
+  alternative = alternative
+    .replace(/\s+once clearance is confirmed$/i, "")
+    .replace(/\s+instead$/i, "")
+    .trim();
   const reason = recommendation
     ? objectionText.slice(0, recommendation.index).trim().replace(/[.!?]+$/, "").trim()
     : String(logisticsResult.risk || scenario.logisticsRisk || "route constraints")
@@ -126,9 +338,10 @@ async function runDebate(scenario) {
   cancelDebate();
   const generation = debateGeneration;
   const log = document.getElementById("debate-log");
-  const approveBtn = document.getElementById("approve-btn");
   log.innerHTML = "";
   setDecisionControlsDisabled(true);
+  setPlaybackControls("idle");
+  setDebateProgress(0, 0);
 
   const summaryTriage = triageAssess(scenario);
   const summaryLogistics = logisticsCheck(scenario);
@@ -160,69 +373,6 @@ async function runDebate(scenario) {
     lines = buildRuleLines(scenario);
   }
 
-  // Render each exchange as a small live-response card.
-  let i = 0;
-  function typeNext() {
-    if (generation !== debateGeneration) return;
-    if (i >= lines.length) {
-      const finalized = resolvedIds.has(scenario.id) || deniedIds.has(scenario.id);
-      setDecisionControlsDisabled(finalized);
-      playConfirm();
-      return;
-    }
-    const line = lines[i];
-    const prefix = line.text.match(/^\[([^\]]+)\]\s*/);
-    const label = prefix ? prefix[1] : line.cls.toUpperCase();
-    const message = prefix ? line.text.slice(prefix[0].length) : line.text;
-    const visualClass = label === "SYSTEM" ? "system" : line.cls;
-    const card = document.createElement("article");
-    card.className = `debate-card ${visualClass}`;
-
-    const header = document.createElement("div");
-    header.className = "debate-card-header";
-    const agentLabel = document.createElement("span");
-    agentLabel.className = "debate-agent";
-    agentLabel.textContent = label;
-    const time = document.createElement("time");
-    time.className = "debate-time";
-    time.textContent = new Date().toLocaleTimeString([], { hour12: false });
-    header.append(agentLabel, time);
-
-    const body = document.createElement("div");
-    body.className = "debate-card-body";
-    const typing = document.createElement("span");
-    typing.className = "typing-indicator";
-    typing.setAttribute("aria-label", `${label} is typing`);
-    for (let dot = 0; dot < 3; dot++) {
-      typing.appendChild(document.createElement("i"));
-    }
-    body.appendChild(typing);
-    card.append(header, body);
-    log.appendChild(card);
-    log.scrollTop = log.scrollHeight;
-    playBlip();
-
-    scheduleDebate(() => {
-      if (generation !== debateGeneration) return;
-      typing.remove();
-      const messageNode = document.createElement("div");
-      messageNode.className = "debate-message";
-      body.appendChild(messageNode);
-      let character = 0;
-      function typeMessage() {
-        messageNode.textContent = message.slice(0, character);
-        log.scrollTop = log.scrollHeight;
-        if (character < message.length) {
-          character++;
-          scheduleDebate(typeMessage, 16, generation);
-        } else {
-          card.classList.add("is-visible");
-          i++;
-          scheduleDebate(typeNext, 420, generation);
-        }
-      }
-      typeMessage();
-    }, 480, generation);
-  }
-  typeNext();
+  if (generation !== debateGeneration) return;
+  startPlayback(scenario, lines);
 }

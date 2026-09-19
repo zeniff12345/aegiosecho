@@ -22,6 +22,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
@@ -32,6 +33,54 @@ body {
   color: var(--amber);
   letter-spacing: 1px;
   font-weight: bold;
+}
+
+.grid-ready-badge {
+  padding: 4px 7px;
+  border: 1px solid var(--emerald);
+  border-radius: 4px;
+  background: rgba(33, 208, 122, 0.1);
+  color: var(--emerald);
+  font: 0.62rem "Consolas", monospace;
+  letter-spacing: 0.07em;
+}
+
+.mission-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font: 0.68rem "Consolas", monospace;
+  white-space: nowrap;
+}
+
+#mission-elapsed {
+  color: var(--amber);
+}
+
+#live-clock {
+  color: var(--text);
+}
+
+#resolved-count {
+  color: var(--emerald);
+}
+
+.sound-toggle {
+  padding: 6px 9px;
+  border: 1px solid var(--emerald);
+  border-radius: 4px;
+  background: rgba(33, 208, 122, 0.08);
+  color: var(--emerald);
+  cursor: pointer;
+  font: bold 0.62rem "Consolas", monospace;
+  letter-spacing: 0.05em;
+}
+
+.sound-toggle.muted {
+  border-color: var(--muted);
+  background: transparent;
+  color: var(--muted);
 }
 
 .boot-overlay {
@@ -102,6 +151,85 @@ body {
   margin: -4px 0 10px;
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+.case-tools {
+  margin-bottom: 10px;
+}
+
+.case-search-row {
+  display: flex;
+  gap: 6px;
+}
+
+.case-search-row input,
+.case-search-row select {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: 0.68rem system-ui, sans-serif;
+}
+
+.case-search-row input {
+  flex: 1;
+}
+
+.case-search-row select {
+  width: 132px;
+}
+
+.case-search-row input:focus,
+.case-search-row select:focus {
+  border-color: var(--emerald);
+  outline: none;
+  box-shadow: 0 0 8px rgba(33, 208, 122, 0.12);
+}
+
+.case-filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.case-filter {
+  padding: 5px 3px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 0.58rem "Consolas", monospace;
+  letter-spacing: 0.06em;
+}
+
+.case-filter:hover,
+.case-filter.active {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(255, 176, 32, 0.08);
+}
+
+.case-count {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font: 0.6rem "Consolas", monospace;
+  letter-spacing: 0.05em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .transcript-row {
@@ -694,6 +822,52 @@ body {
   padding: 4px 3px 8px 0;
 }
 
+.debate-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 5px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(124, 136, 148, 0.18);
+}
+
+.debate-progress {
+  margin: 0;
+  color: var(--muted);
+  font: 0.62rem "Consolas", monospace;
+  letter-spacing: 0.08em;
+}
+
+.debate-playback {
+  display: flex;
+  gap: 5px;
+}
+
+.playback-button {
+  min-width: 48px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 0.58rem "Consolas", monospace;
+  letter-spacing: 0.06em;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
+}
+
+.playback-button:hover:not(:disabled) {
+  border-color: var(--emerald);
+  color: var(--emerald);
+  background: rgba(33, 208, 122, 0.08);
+}
+
+.playback-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .debate-card {
   --agent-color: var(--emerald);
   position: relative;
@@ -730,6 +904,28 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 5px;
+}
+
+.debate-typing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin: 0 0 8px 2px;
+  padding-left: 13px;
+  border-left: 3px solid var(--agent-color);
+  color: var(--agent-color);
+  font: 0.62rem "Consolas", monospace;
+  letter-spacing: 0.08em;
+}
+
+.debate-typing.triage { --agent-color: var(--muted); }
+.debate-typing.logistics { --agent-color: var(--amber); }
+.debate-typing.commander { --agent-color: var(--emerald); }
+.debate-typing.system { --agent-color: var(--emerald); }
+
+.debate-typing .typing-indicator {
+  height: 1em;
 }
 
 .debate-agent {
