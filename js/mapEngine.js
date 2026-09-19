@@ -23,7 +23,7 @@ function setupMapControls() {
   setMapZoom(0);
 }
 
-function updateMapInfo(scenario) {
+function updateMapInfo(scenario, finalAssetType = scenario.assetType) {
   if (!scenario) return;
   const state = typeof resolvedIds !== "undefined" && resolvedIds.has(scenario.id)
     ? "Authorized"
@@ -38,7 +38,7 @@ function updateMapInfo(scenario) {
   const status = document.getElementById("map-status");
   if (name) name.textContent = scenario.name;
   if (coordinateLabel) coordinateLabel.textContent = coordinates;
-  if (status) status.textContent = `${coordinates} · Asset: ${String(scenario.assetType || "unknown").toUpperCase()} · ${state}`;
+  if (status) status.textContent = `${coordinates} · Asset: ${String(finalAssetType || "unknown").toUpperCase()} · ${state}`;
   renderMapLegend();
 }
 
@@ -120,7 +120,7 @@ const ASSET_ICONS = {
   air: '<svg viewBox="0 0 32 24" aria-hidden="true"><path d="m15 3 2 1v6l8 3v2h-8v4l3 2v1H12v-1l3-2v-4H7v-2l8-3V4l2-1h-2Z"/></svg>'
 };
 
-function moveAssetToScenario(scenario) {
+function moveAssetToScenario(scenario, finalAssetType = scenario.assetType) {
   const asset = document.getElementById("asset-marker");
   const map = document.getElementById("map-area");
   const bounds = map.getBoundingClientRect();
@@ -131,7 +131,7 @@ function moveAssetToScenario(scenario) {
   const controlX = (startX + targetX) / 2 + (targetY - startY) * 0.18;
   const controlY = (startY + targetY) / 2 - (targetX - startX) * 0.18;
 
-  asset.innerHTML = ASSET_ICONS[scenario.assetType] || ASSET_ICONS.ground;
+  asset.innerHTML = ASSET_ICONS[finalAssetType] || ASSET_ICONS.ground;
   asset.classList.add("moving");
   drawAssetTrail(map, startX, startY, controlX, controlY, targetX, targetY);
   drawDeploymentRoute(map, startX, startY, controlX, controlY, targetX, targetY);
@@ -160,7 +160,7 @@ function resetAssetPosition() {
   if (route) route.innerHTML = "";
 }
 
-function restoreDeployedAsset(scenario) {
+function restoreDeployedAsset(scenario, finalAssetType = scenario.assetType) {
   const asset = document.getElementById("asset-marker");
   const map = document.getElementById("map-area");
   const bounds = map.getBoundingClientRect();
@@ -170,7 +170,7 @@ function restoreDeployedAsset(scenario) {
   const targetY = scenario.mapY / 100 * bounds.height;
   const controlX = (startX + targetX) / 2 + (targetY - startY) * 0.18;
   const controlY = (startY + targetY) / 2 - (targetX - startX) * 0.18;
-  asset.innerHTML = ASSET_ICONS[scenario.assetType] || ASSET_ICONS.ground;
+  asset.innerHTML = ASSET_ICONS[finalAssetType] || ASSET_ICONS.ground;
   asset.style.left = `${scenario.mapX}%`;
   asset.style.top = `${scenario.mapY}%`;
   drawDeploymentRoute(map, startX, startY, controlX, controlY, targetX, targetY);

@@ -5,6 +5,14 @@ let scenarios = [];
 let resolvedIds = new Set();
 let deniedIds = new Set();
 let heldIds = new Set();
+const caseView = {
+  query: "",
+  sort: "name",
+  filter: "all"
+};
+
+const CRITICAL_STRESS = 85;
+const HIGH_STRESS = 60;
 
 async function loadScenarios() {
   const res = await fetch("data/scenarios.json");
@@ -17,7 +25,35 @@ async function loadScenarios() {
 function renderCaseList() {
   const list = document.getElementById("case-list");
   list.innerHTML = "";
-  scenarios.forEach((s) => {
+  const query = caseView.query.trim().toLowerCase();
+  const visibleScenarios = scenarios
+    .filter((scenario) => {
+      const searchableText = [
+        scenario.name,
+        scenario.region,
+        scenario.location,
+        scenario.place,
+        scenario.hazardTag
+      ].filter(Boolean).join(" ").toLowerCase();
+      const matchesSearch = !query || searchableText.includes(query);
+      const stress = Number(scenario.stressIndex) || 0;
+      const isResolved = isScenarioResolved(scenario.id);
+      const matchesFilter = caseView.filter === "all"
+        || (caseView.filter === "critical" && stress > CRITICAL_STRESS)
+        || (caseView.filter === "priority" && stress > HIGH_STRESS && stress <= CRITICAL_STRESS)
+        || (caseView.filter === "resolved" && isResolved);
+      return matchesSearch && matchesFilter;
+    })
+    .slice()
+    .sort((left, right) => {
+      if (caseView.sort === "stress-desc") {
+        return (Number(right.stressIndex) || 0) - (Number(left.stressIndex) || 0)
+          || left.name.localeCompare(right.name);
+      }
+      return left.name.localeCompare(right.name);
+    });
+
+  visibleScenarios.forEach((s) => {
     const btn = document.createElement("button");
     const state = resolvedIds.has(s.id)
       ? { label: "APPROVED", className: "approved" }
@@ -39,15 +75,79 @@ function renderCaseList() {
     btn.onclick = () => selectScenario(s.id);
     list.appendChild(btn);
   });
+
+  const criticalLeft = visibleScenarios.filter((scenario) =>
+    Number(scenario.stressIndex) > CRITICAL_STRESS && !isScenarioResolved(scenario.id)
+  ).length;
+  document.getElementById("case-count").textContent =
+    `${visibleScenarios.length}/${scenarios.length} shown · ${criticalLeft} crit left`;
+
+  document.querySelectorAll(".case-filter").forEach((button) => {
+    const active = button.dataset.filter === caseView.filter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
 }
+
+function isScenarioResolved(id) {
+  return resolvedIds.has(id) || deniedIds.has(id) || heldIds.has(id);
+}
+
+document.getElementById("case-search").addEventListener("input", (event) => {
+  caseView.query = event.target.value;
+  renderCaseList();
+});
+
+document.getElementById("case-sort").addEventListener("change", (event) => {
+  caseView.sort = event.target.value;
+  renderCaseList();
+});
+
+document.querySelectorAll(".case-filter").forEach((button) => {
+  button.addEventListener("click", () => {
+    caseView.filter = button.dataset.filter;
+    renderCaseList();
+  });
+});
 
 function updateIncidentCounter() {
   const active = scenarios.length - resolvedIds.size - deniedIds.size;
   document.getElementById("incident-counter").textContent = `${active} ACTIVE INCIDENTS`;
+  document.getElementById("resolved-count").textContent = `${resolvedIds.size + deniedIds.size} resolved`;
 }
 
 let activeScenario = null;
 let panelTransitionId = 0;
+const missionStartedAt = Date.now();
+
+function updateMissionStatus() {
+  const elapsed = Math.floor((Date.now() - missionStartedAt) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  document.getElementById("mission-elapsed").textContent =
+    `T+${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  document.getElementById("live-clock").textContent = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
+updateMissionStatus();
+setInterval(updateMissionStatus, 1000);
+
+document.getElementById("sound-toggle").addEventListener("click", (event) => {
+  const enabled = event.currentTarget.getAttribute("aria-pressed") !== "true";
+  setSoundEnabled(enabled);
+  event.currentTarget.setAttribute("aria-pressed", String(enabled));
+  event.currentTarget.textContent = enabled ? "SOUND ON" : "SOUND OFF";
+  event.currentTarget.classList.toggle("muted", !enabled);
+});
+
+function getFinalCommanderResult(scenario) {
+  return commanderResolve(triageAssess(scenario), logisticsCheck(scenario), scenario);
+}
 
 function beginPanelTransition() {
   const transitionId = ++panelTransitionId;
@@ -85,8 +185,12 @@ function selectScenario(id) {
   // Update Panel B map
   renderHazardRing(scenario);
   resetAssetPosition();
-  if (resolvedIds.has(scenario.id)) restoreDeployedAsset(scenario);
-  updateMapInfo(scenario);
+  let displayAssetType = scenario.assetType;
+  if (resolvedIds.has(scenario.id)) {
+    displayAssetType = getFinalCommanderResult(scenario).finalAssetType;
+    restoreDeployedAsset(scenario, displayAssetType);
+  }
+  updateMapInfo(scenario, displayAssetType);
 
   // Trigger Panel C debate for this scenario
   runDebate(scenario);
@@ -94,7 +198,8 @@ function selectScenario(id) {
 
 document.getElementById("approve-btn").addEventListener("click", () => {
   if (!activeScenario) return;
-  moveAssetToScenario(activeScenario);
+  const commanderResult = getFinalCommanderResult(activeScenario);
+  moveAssetToScenario(activeScenario, commanderResult.finalAssetType);
   playConfirm();
   resolvedIds.add(activeScenario.id);
   deniedIds.delete(activeScenario.id);
@@ -103,7 +208,7 @@ document.getElementById("approve-btn").addEventListener("click", () => {
   setDecisionControlsDisabled(true);
   renderCaseList();
   updateIncidentCounter();
-  updateMapInfo(activeScenario);
+  updateMapInfo(activeScenario, commanderResult.finalAssetType);
 });
 
 document.getElementById("deny-btn").addEventListener("click", () => {

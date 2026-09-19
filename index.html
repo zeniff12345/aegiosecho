@@ -17,6 +17,13 @@
   <header class="top-bar">
     <h1>AEGIS ECHO</h1>
     <span id="incident-counter" class="incident-counter">0 ACTIVE INCIDENTS</span>
+    <span class="grid-ready-badge">GRID-DOWN READY</span>
+    <div class="mission-status" aria-label="Mission status">
+      <span id="mission-elapsed">T+00:00</span>
+      <time id="live-clock">--:--:--</time>
+      <span id="resolved-count">0 resolved</span>
+    </div>
+    <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">SOUND ON</button>
     <button id="ai-mode-toggle" class="ai-toggle">🧠 RULE-BASED MODE</button>
     <button id="grid-toggle" class="grid-toggle offline">
       DECENTRALIZED EDGE MODE — 100% OFFLINE
@@ -28,8 +35,26 @@
     <!-- PANEL A: Sensor Fusion Feed -->
     <section id="panel-a" class="panel">
       <h2>Sensor Fusion Feed</h2>
-      <button id="live-intake-btn" class="live-intake-btn">🎙 Live Voice Intake (needs internet)</button>
+      <button id="live-intake-btn" class="live-intake-btn">🎙 Live Voice Intake</button>
       <p id="voice-status" class="voice-status" role="status" aria-live="polite"></p>
+      <div class="case-tools">
+        <div class="case-search-row">
+          <label class="sr-only" for="case-search">Search incidents</label>
+          <input id="case-search" type="search" placeholder="Search name, region, tag..." autocomplete="off">
+          <label class="sr-only" for="case-sort">Sort incidents</label>
+          <select id="case-sort">
+            <option value="name">Name A-Z</option>
+            <option value="stress-desc">Stress (high to low)</option>
+          </select>
+        </div>
+        <div class="case-filters" role="tablist" aria-label="Incident filters">
+          <button type="button" class="case-filter active" data-filter="all" role="tab" aria-selected="true">ALL</button>
+          <button type="button" class="case-filter" data-filter="priority" role="tab" aria-selected="false">PRIORITY</button>
+          <button type="button" class="case-filter" data-filter="critical" role="tab" aria-selected="false">CRITICAL</button>
+          <button type="button" class="case-filter" data-filter="resolved" role="tab" aria-selected="false">RESOLVED</button>
+        </div>
+        <p id="case-count" class="case-count" role="status" aria-live="polite">0/0 shown · 0 crit left</p>
+      </div>
       <div id="case-list" class="case-list">
         <!-- scenario buttons get inserted here by main.js -->
       </div>
@@ -82,6 +107,14 @@
     <!-- PANEL C: Adversarial Consensus Engine Terminal -->
     <section id="panel-c" class="panel">
       <h2>Swarm Debate Terminal</h2>
+      <div class="debate-toolbar" aria-label="Debate playback controls">
+        <p id="debate-progress" class="debate-progress" role="status" aria-live="polite">AWAITING CONSENSUS...</p>
+        <div class="debate-playback">
+          <button id="debate-pause" type="button" class="playback-button" disabled>PAUSE</button>
+          <button id="debate-replay" type="button" class="playback-button" disabled>REPLAY</button>
+          <button id="debate-speed" type="button" class="playback-button" disabled>1x</button>
+        </div>
+      </div>
       <div id="debate-log" class="debate-log">
         <!-- debate messages get typed in here by debateEngine.js -->
         <div class="debate-empty-state">◌<span>SELECT AN INCIDENT TO BEGIN</span></div>

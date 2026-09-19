@@ -2,6 +2,12 @@
 // No sound FILES are used (keeps everything offline-safe), just generated tones.
 
 let audioCtx = null;
+let soundEnabled = true;
+
+function setSoundEnabled(enabled) {
+  soundEnabled = Boolean(enabled);
+}
+
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
@@ -9,6 +15,7 @@ function getAudioCtx() {
 
 // Short click/blip sound — played each time a debate line appears
 function playBlip() {
+  if (!soundEnabled) return;
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
@@ -25,6 +32,7 @@ function playBlip() {
 
 // Confirmation tone — played when the Approve button unlocks or is clicked
 function playConfirm() {
+  if (!soundEnabled) return;
   try {
     const ctx = getAudioCtx();
     [440, 660].forEach((freq, i) => {
