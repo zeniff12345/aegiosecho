@@ -1,81 +1,58 @@
-// DEBATE ENGINE — this is your #1 priority feature.
-// It makes Panel C look like a LIVE execution loop, not a static script.
-// Flow: (1) ingest & score -> (2) conflict/debate if agents disagree -> (3) final payload.
-//
-// Supports TWO modes:
-// - Rule-based (default, always works, fully offline): buildRuleLines()
-// - Real AI (optional, needs API key + internet): buildAILines() in aiAgent.js
-// If real AI mode is on but the call fails for any reason (no internet, bad
-// key, rate limit), it automatically falls back to rule-based so the demo
-// never breaks.
+/**
+ * js/debateEngine.js
+ * Multi-Agent Consensus Engine for Panel C.
+ * Simulates real-time agent dialogue using accessible AI role names.
+ */
 
-function buildRuleLines(scenario) {
-  const triageResult = triageAssess(scenario);
-  const logisticsResult = logisticsCheck(scenario);
-  const commanderResult = commanderResolve(triageResult, logisticsResult, scenario);
+function runDebate(scenario) {
+  const terminal = document.getElementById('terminal-stream');
+  const authBtn = document.getElementById('auth-btn');
 
-  const lines = [
-    { cls: "triage", text: `[TRIAGE] ${triageResult.proposal}` }
+  if (!terminal) return;
+
+  // Clear terminal and log selected scenario
+  terminal.innerHTML = `<p style="color:#f59e0b;">[INCIDENT LOADED]: ${scenario.name}</p>`;
+  
+  if (authBtn) {
+    authBtn.disabled = true;
+    authBtn.innerText = "AGENT CONSENSUS IN PROGRESS...";
+    authBtn.style.backgroundColor = "#374151";
+  }
+
+  // Simplified AI Agent Dialogue Array
+  const debateSteps = [
+    {
+      agent: "TRIAGE AI",
+      color: "#38bdf8", // Sky blue
+      text: `Caller stress at ${scenario.stressIndex || 75}%. Acoustic hazard: "${scenario.hazardTag || 'Emergency'}" detected. High priority.`
+    },
+    {
+      agent: "LOGISTICS AI",
+      color: "#f43f5e", // Rose red
+      text: `Ground route blocked near grid [${scenario.mapX || 50}, ${scenario.mapY || 50}]. Rerouting via safe aerial vector.`
+    },
+    {
+      agent: "COMMANDER AI",
+      color: "#10b981", // Emerald green
+      text: `Consensus verified. AIR-RESCUE-01 & SWIFTWATER-TEAM dispatched under offline edge protocol.`
+    }
   ];
 
-  if (logisticsResult.objection) {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] ${logisticsResult.objection}` });
-    lines.push({ cls: "commander", text: `[COMMANDER] Conflict detected. Running Adversarial Consensus Loop...` });
-  } else {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] Route confirmed. No objections.` });
-  }
+  // Stream dialogue lines with delayed typing effect
+  debateSteps.forEach((step, index) => {
+    setTimeout(() => {
+      const line = document.createElement('p');
+      line.style.margin = "6px 0";
+      line.innerHTML = `<span style="color:${step.color}; font-weight:bold;">[${step.agent}]:</span> ${step.text}`;
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
 
-  lines.push({ cls: "commander", text: `[COMMANDER] ${commanderResult.finalPlan}` });
-  return lines;
-}
-
-async function runDebate(scenario) {
-  const log = document.getElementById("debate-log");
-  const approveBtn = document.getElementById("approve-btn");
-  log.innerHTML = "";
-  approveBtn.disabled = true;
-
-  let lines;
-
-  if (USE_REAL_AI && AEGIS_API_KEY) {
-    const p = document.createElement("p");
-    p.className = "commander";
-    p.textContent = "[SYSTEM] Contacting AI agents...";
-    log.appendChild(p);
-    try {
-      lines = await buildAILines(scenario);
-      log.innerHTML = ""; // clear the "contacting" message once real lines are ready
-    } catch (err) {
-      console.warn("Real AI call failed, falling back to rule-based logic:", err);
-      log.innerHTML = "";
-      const fallbackNotice = document.createElement("p");
-      fallbackNotice.className = "logistics";
-      fallbackNotice.textContent = "[SYSTEM] AI call failed — using local fallback logic.";
-      log.appendChild(fallbackNotice);
-      lines = buildRuleLines(scenario);
-    }
-  } else {
-    lines = buildRuleLines(scenario);
-  }
-
-  // Type each line out with a delay so it visibly "runs" rather than appearing instantly.
-  let i = 0;
-  function typeNext() {
-    if (i >= lines.length) {
-      approveBtn.disabled = false;
-      playConfirm();
-      return;
-    }
-    const line = lines[i];
-    const p = document.createElement("p");
-    p.className = line.cls;
-    const time = new Date().toLocaleTimeString([], { hour12: false });
-    p.textContent = `[${time}] ${line.text}`;
-    log.appendChild(p);
-    log.scrollTop = log.scrollHeight;
-    playBlip();
-    i++;
-    setTimeout(typeNext, 850 + Math.random() * 400); // slight randomness so it feels less robotic
-  }
-  typeNext();
+      // Unlock authorization button after Commander AI finishes
+      if (index === debateSteps.length - 1 && authBtn) {
+        authBtn.disabled = false;
+        authBtn.innerText = "AUTHORIZE SPECIFIC CRITICAL SWARM ACTIONS";
+        authBtn.style.backgroundColor = "var(--crimson)";
+      }
+    }, (index + 1) * 900); // 900ms delay between agent responses
+  });
 }

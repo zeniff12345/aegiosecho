@@ -18,8 +18,30 @@ function handleModeToggle(checkbox) {
   }
 }
 
+// Action execution when human operator authorizes payload
+function authorizeSwarmAction() {
+  const terminal = document.getElementById('terminal-stream');
+  const authBtn = document.getElementById('auth-btn');
+
+  if (terminal) {
+    const execLine = document.createElement('p');
+    execLine.style.color = "#10b981";
+    execLine.style.fontWeight = "bold";
+    execLine.style.marginTop = "10px";
+    execLine.innerHTML = "[HUMAN AUTHORIZATION GRANTED]: CRITICAL SWARM PAYLOAD EXECUTED.";
+    terminal.appendChild(execLine);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  if (authBtn) {
+    authBtn.innerText = "SWARM ACTIONS EXECUTED";
+    authBtn.disabled = true;
+    authBtn.style.backgroundColor = "#10b981";
+  }
+}
+
 function selectScenarioData(scenario) {
-  // Update Panel A: Hazard Tag and Biometric Stress Index
+  // 1. Update Panel A
   const hazardTag = document.getElementById('hazard-tag-text');
   const stressBar = document.getElementById('stress-bar');
   const stressValue = document.getElementById('stress-value');
@@ -28,21 +50,15 @@ function selectScenarioData(scenario) {
   if (stressBar) stressBar.style.width = `${scenario.stressIndex || 0}%`;
   if (stressValue) stressValue.innerText = `${scenario.stressIndex || 0}%`;
 
-  // Update Panel B: Spatial Telemetry Tactical Map
+  // 2. Update Panel B
   if (typeof updateTacticalMap === 'function') {
     updateTacticalMap(scenario);
   }
 
-  // Update Panel C: Log selection in Agent Terminal
-  const terminal = document.getElementById('terminal-stream');
-  if (terminal) {
-    terminal.innerHTML += `<p style="color:#f59e0b; margin-top: 4px;">[CASE LOADED]: ${scenario.name}</p>`;
-    terminal.scrollTop = terminal.scrollHeight;
+  // 3. Trigger Panel C Agent Debate Stream
+  if (typeof runDebate === 'function') {
+    runDebate(scenario);
   }
-
-  // Enable Action Button
-  const authBtn = document.getElementById('auth-btn');
-  if (authBtn) authBtn.disabled = false;
 }
 
 async function loadDashboardData() {
@@ -55,22 +71,8 @@ async function loadDashboardData() {
   } catch (error) {
     console.warn("Could not load scenarios.json, utilizing fallback data.", error);
     activeScenarios = [
-      {
-        id: "case-01",
-        name: "Balkhu River Flash Flood",
-        hazardTag: "Rushing water detected",
-        stressIndex: 85,
-        mapX: 45,
-        mapY: 60
-      },
-      {
-        id: "case-02",
-        name: "Sindhupalchok Landslide",
-        hazardTag: "Debris flow hazard",
-        stressIndex: 65,
-        mapX: 70,
-        mapY: 35
-      }
+      { id: "case-01", name: "Balkhu River Flash Flood", hazardTag: "Rushing water detected", stressIndex: 85, mapX: 45, mapY: 60 },
+      { id: "case-02", name: "Sindhupalchok Landslide", hazardTag: "Debris flow hazard", stressIndex: 65, mapX: 70, mapY: 35 }
     ];
   }
 
@@ -88,6 +90,12 @@ async function loadDashboardData() {
       selectScenarioData(item);
     }
   });
+
+  // Attach click listener to authorization button
+  const authBtn = document.getElementById('auth-btn');
+  if (authBtn) {
+    authBtn.onclick = authorizeSwarmAction;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
