@@ -70,7 +70,20 @@ async function groqChat(messages, maxTokens = 150) {
     })
   });
 
-  if (!res.ok) throw new Error(`Groq request failed: ${res.status}`);
+  if (!res.ok) {
+    // Surface Groq's own error message (e.g. "model not found", "invalid
+    // api key") on screen, not just the bare status code -- a 404 alone
+    // doesn't say whether it's the model name or something else.
+    let detail = "";
+    try {
+      const errBody = await res.json();
+      if (errBody?.error?.message) detail = ` — ${errBody.error.message}`;
+    } catch (_) {
+      // response wasn't JSON (e.g. a proxy/firewall page instead of Groq
+      // itself) -- leave detail blank, the status code is still shown.
+    }
+    throw new Error(`Groq request failed: ${res.status}${detail}`);
+  }
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error("Groq response had no content");
