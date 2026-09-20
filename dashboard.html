@@ -25,6 +25,7 @@
     </div>
     <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">SOUND ON</button>
     <button id="ai-mode-toggle" class="ai-toggle">🧠 RULE-BASED MODE</button>
+    <button id="groq-mode-toggle" class="ai-toggle groq-toggle" title="Route the three dispatch agents through Groq (needs your own API key + internet)">⚡ GROQ AGENTS OFF</button>
     <button id="grid-toggle" class="grid-toggle offline">
       DECENTRALIZED EDGE MODE — 100% OFFLINE
     </button>
@@ -35,8 +36,19 @@
     <!-- PANEL A: Sensor Fusion Feed -->
     <section id="panel-a" class="panel">
       <h2>Sensor Fusion Feed</h2>
-      <button id="live-intake-btn" class="live-intake-btn">🎙 Live Voice Intake</button>
-      <p id="voice-status" class="voice-status" role="status" aria-live="polite"></p>
+
+      <!-- FIELD DATA INGESTION ENGINE — standalone raw multi-source feed.
+           Not wired into the Needs/Logistics/Command agent engine below;
+           purely a display layer for now. -->
+      <div class="ingestion-panel">
+        <h3 class="ingestion-panel-title">Field Data Ingestion Engine</h3>
+        <p class="ingestion-panel-sub">Satellite · Drone · Weather · Hospitals · Field Teams · Citizen Reports</p>
+        <div id="ingestion-feed" class="ingestion-feed"></div>
+        <!-- Needs & Impact Agent's Groq-routed zone synthesis (draft text
+             layered on top of the live feed above; see js/groqAgent.js) -->
+        <div id="groq-feed-synthesis" class="groq-synthesis-block" hidden></div>
+      </div>
+
       <div class="case-tools">
         <div class="case-search-row">
           <label class="sr-only" for="case-search">Search incidents</label>
@@ -58,12 +70,8 @@
       <div id="case-list" class="case-list">
         <!-- scenario buttons get inserted here by main.js -->
       </div>
-      <div class="voice-module">
-        <div id="waveform" class="waveform"></div>
-        <div class="transcript-row">
-          <p id="transcript" class="transcript">Select a case to load transcript...</p>
-          <button id="speak-btn" class="speak-btn" title="Play transcript aloud">🔊</button>
-        </div>
+      <div class="case-signal">
+        <p id="transcript" class="transcript">Select a case to load transcript...</p>
         <p id="hazard-tag" class="hazard-tag"></p>
         <div class="stress-bar-wrap">
           <span>Stress Index</span>
@@ -72,47 +80,87 @@
       </div>
     </section>
 
-    <!-- PANEL B: Tactical Map -->
+    <!-- PANEL B: Tactical Map — pannable/zoomable grid map of Nepal -->
     <section id="panel-b" class="panel">
       <h2>Spatial Telemetry & Grid Mapping</h2>
       <div class="map-header">
         <strong id="map-case-name">No case selected</strong>
         <span id="map-case-coordinates">-- / --</span>
       </div>
-      <div id="map-area" class="map-area">
-        <div class="map-content">
-          <div class="map-grid-lines"></div>
-          <svg id="deployment-route" class="deployment-route" aria-hidden="true"></svg>
-          <div id="hazard-markers"></div>
-          <div id="asset-marker" class="asset-marker" title="Rescue Asset"></div>
+      <div class="map-shell">
+        <!-- LAYER FILTER SIDEBAR -->
+        <fieldset class="map-filter-sidebar" aria-label="Map layer filters">
+          <legend class="sr-only">Layers</legend>
+          <input id="map-layer-search" class="filter-search" type="search" placeholder="Search layers...">
+          <label><input id="layer-incidents" type="checkbox" checked> <span>Active Hazards</span></label>
+          <label><input id="layer-provinces" type="checkbox" checked> <span>Provinces</span></label>
+          <label><input id="layer-cascade" type="checkbox" checked> <span>Cascade Risk</span></label>
+          <label><input id="layer-depots" type="checkbox" checked> <span>Resource Depots</span></label>
+          <label><input id="layer-routes" type="checkbox" checked> <span>Deployment Routes</span></label>
+          <label><input id="layer-labels" type="checkbox" checked> <span>Labels</span></label>
+          <label><input id="layer-grid" type="checkbox" checked> <span>Grid</span></label>
+        </fieldset>
+
+        <div id="map-area" class="map-area">
+          <svg id="grid-map-svg" class="grid-map-svg" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tactical grid map of Nepal">
+            <defs>
+              <pattern id="map-grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" class="grid-pattern-line"></path>
+              </pattern>
+              <clipPath id="nepal-clip">
+                <path id="nepal-clip-path"></path>
+              </clipPath>
+            </defs>
+            <rect id="map-grid-pattern-rect" x="-200" y="-200" width="1400" height="830" fill="url(#map-grid-pattern)"></rect>
+            <path id="nepal-outline" class="nepal-outline"></path>
+            <g id="province-layer" clip-path="url(#nepal-clip)"></g>
+            <g id="cascade-glow-layer"></g>
+            <g id="cascade-watch-layer"></g>
+            <g id="depot-layer"></g>
+            <path id="deployment-route-path" class="deployment-route-path"></path>
+            <g id="asset-trail-layer"></g>
+            <g id="hazard-markers"></g>
+            <g id="asset-marker" class="asset-marker" hidden></g>
+          </svg>
+          <div id="map-tooltip-el" class="map-tooltip" hidden></div>
+          <div class="map-controls" aria-label="Map zoom controls">
+            <button id="map-zoom-in" type="button" title="Zoom in">+</button>
+            <button id="map-zoom-out" type="button" title="Zoom out">−</button>
+            <button id="map-zoom-reset" type="button" title="Reset zoom">RESET</button>
+          </div>
           <div class="map-empty-state">⌖<span>SELECT AN INCIDENT TO BEGIN</span></div>
         </div>
-        <div class="map-controls" aria-label="Map zoom controls">
-          <button id="map-zoom-in" type="button" title="Zoom in">+</button>
-          <button id="map-zoom-out" type="button" title="Zoom out">−</button>
-          <button id="map-zoom-reset" type="button" title="Reset zoom">RESET</button>
-        </div>
-        <fieldset class="map-layers">
-          <legend>LAYERS</legend>
-          <label><input id="layer-incidents" type="checkbox" checked> INCIDENTS</label>
-          <label><input id="layer-routes" type="checkbox" checked> ROUTES</label>
-          <label><input id="layer-labels" type="checkbox" checked> LABELS</label>
-          <label><input id="layer-grid" type="checkbox" checked> GRID</label>
-        </fieldset>
       </div>
       <div id="map-legend" class="map-legend"></div>
       <div id="map-status" class="map-status">[-- / --] · Asset: -- · Staged</div>
     </section>
 
-    <!-- PANEL C: Adversarial Consensus Engine Terminal -->
+    <!-- PANEL C: Agentic Command Core (Resource Inventory + Adversarial Debate) -->
     <section id="panel-c" class="panel">
-      <h2>Swarm Debate Terminal</h2>
+      <h2>Agentic Command Core</h2>
+
+      <!-- RESOURCE & LOGISTICS INVENTORY — live depot counts read by the
+           Resource & Logistics Agent on every case selection, and updated
+           here the moment a dispatch is authorized. -->
+      <div class="resource-panel">
+        <h3 class="resource-panel-title">Resource &amp; Logistics Inventory</h3>
+        <p class="resource-panel-sub">Live depot status · updates when a dispatch is authorized</p>
+        <div id="resource-inventory" class="resource-inventory">
+          <!-- resource chips get inserted here by main.js -->
+        </div>
+        <!-- Resource & Logistics Agent's Groq-routed stock-vs-deploy note
+             (draft text; see js/groqAgent.js) -->
+        <div id="groq-inventory-note" class="groq-synthesis-block" hidden></div>
+      </div>
+
+      <h3 class="debate-terminal-title">Adversarial Deliberation Log</h3>
       <div class="debate-toolbar" aria-label="Debate playback controls">
         <p id="debate-progress" class="debate-progress" role="status" aria-live="polite">AWAITING CONSENSUS...</p>
         <div class="debate-playback">
           <button id="debate-pause" type="button" class="playback-button" disabled>PAUSE</button>
           <button id="debate-replay" type="button" class="playback-button" disabled>REPLAY</button>
           <button id="debate-speed" type="button" class="playback-button" disabled>1x</button>
+          <button id="dispatch-json-btn" type="button" class="playback-button" disabled title="Copy the structured dispatch plan JSON for this case">JSON</button>
         </div>
       </div>
       <div id="debate-log" class="debate-log">
@@ -145,16 +193,21 @@
 
   </main>
 
-  <!-- Load agent logic first, then the engine that orchestrates them, then main.js which ties it all together -->
-  <script src="js/triageAgent.js"></script>
-  <script src="js/logisticsAgent.js"></script>
-  <script src="js/commanderAgent.js"></script>
+  <!-- Load the three Agentic Command Core agents first, then the engine that
+       orchestrates their adversarial debate, then main.js which ties it all together -->
+  <script src="js/needsImpactAgent.js"></script>
+  <script src="js/resourceLogisticsAgent.js"></script>
+  <script src="js/commandAgent.js"></script>
   <script src="js/debateEngine.js"></script>
   <script src="js/mapEngine.js"></script>
-  <script src="js/waveform.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/aiAgent.js"></script>
-  <script src="js/voiceIntake.js"></script>
+  <!-- Optional: routes the three dispatch agents through Groq instead of
+       Claude or rule-based logic. Direct frontend-to-Groq calls, no
+       backend — see GROQ_DISPATCH_AGENTS_ROUTING.json and js/groqAgent.js. -->
+  <script src="js/groqAgent.js"></script>
+  <!-- Field Data Ingestion Engine: standalone, not part of the agent debate pipeline -->
+  <script src="js/fieldIngestion.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

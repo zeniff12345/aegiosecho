@@ -1,0 +1,15 @@
+[
+  { "id": "trauma_kits", "label": "trauma kits", "unit": "kits", "total": 120, "available": 120, "deployed": 0, "reserved": 10, "lowThreshold": 20 },
+  { "id": "food", "label": "food rations", "unit": "ration packs", "total": 2000, "available": 2000, "deployed": 0, "reserved": 150, "lowThreshold": 300 },
+  { "id": "water", "label": "water", "unit": "20L jugs", "total": 1500, "available": 1500, "deployed": 0, "reserved": 100, "lowThreshold": 200 },
+  { "id": "tents", "label": "shelter tents", "unit": "tents", "total": 300, "available": 300, "deployed": 0, "reserved": 25, "lowThreshold": 40 },
+  { "id": "fuel", "label": "fuel", "unit": "drums", "total": 60, "available": 60, "deployed": 0, "reserved": 5, "lowThreshold": 10 },
+  { "id": "ambulances", "label": "ambulances", "unit": "vehicles", "total": 18, "available": 18, "deployed": 0, "reserved": 2, "lowThreshold": 4 },
+  { "id": "boats", "label": "swift-water boats", "unit": "boats", "total": 10, "available": 10, "deployed": 0, "reserved": 1, "lowThreshold": 2 },
+  { "id": "drones", "label": "recon drones", "unit": "drones", "total": 14, "available": 14, "deployed": 0, "reserved": 2, "lowThreshold": 3 },
+  { "id": "helicopters", "label": "helicopters", "unit": "airframes", "total": 6, "available": 6, "deployed": 0, "reserved": 1, "lowThreshold": 1 },
+  { "id": "field_hospitals", "label": "field hospitals", "unit": "units", "total": 4, "available": 4, "deployed": 0, "reserved": 1, "lowThreshold": 1 },
+  { "id": "sar_teams", "label": "SAR teams", "unit": "teams", "total": 22, "available": 22, "deployed": 0, "reserved": 2, "lowThreshold": 4 },
+  { "id": "engineers", "label": "structural engineers", "unit": "engineers", "total": 15, "available": 15, "deployed": 0, "reserved": 1, "lowThreshold": 3 },
+  { "id": "volunteers", "label": "trained volunteers", "unit": "people", "total": 240, "available": 240, "deployed": 0, "reserved": 20, "lowThreshold": 30 }
+]

@@ -1,0 +1,375 @@
+:root {
+  --bg: #0b0e11;
+  --panel-bg: #12161b;
+  --border: #232a31;
+  --text: #d7dde3;
+  --muted: #7c8894;
+  --amber: #ffb020;
+  --emerald: #21d07a;
+  --crimson: #ff3b3b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(33, 208, 122, 0.06), transparent 40%),
+    radial-gradient(ellipse at 82% 78%, rgba(255, 176, 32, 0.05), transparent 42%);
+}
+
+.scanline-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  opacity: 0.5;
+}
+
+.landing {
+  position: relative;
+  z-index: 2;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --- Site nav (shared across Home / How It Works) --- */
+
+.site-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 22px 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.site-nav-brand {
+  font: 0.8rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.18em;
+  color: var(--text);
+}
+
+.site-nav-links {
+  display: flex;
+  gap: 22px;
+}
+
+.site-nav-link {
+  font: 0.74rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-decoration: none;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.site-nav-link:hover {
+  color: var(--text);
+}
+
+.site-nav-link.is-active {
+  color: var(--emerald);
+  border-bottom-color: var(--emerald);
+}
+
+/* --- Hero / top badges --- */
+
+.landing-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 18px;
+}
+
+.landing-badge {
+  padding: 5px 9px;
+  border: 1px solid var(--emerald);
+  border-radius: 4px;
+  background: rgba(33, 208, 122, 0.08);
+  color: var(--emerald);
+  font: 0.68rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+}
+
+.landing-badge--muted {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.landing-hero {
+  text-align: center;
+  padding: 56px 0 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: landing-fade-up 700ms ease both;
+}
+
+.landing-kicker {
+  margin: 0 0 10px;
+  font: 0.72rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.landing-title {
+  margin: 0;
+  font-family: "Consolas", ui-monospace, monospace;
+  font-size: clamp(2.6rem, 8vw, 4.6rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  text-shadow: 0 0 22px rgba(33, 208, 122, 0.35);
+}
+
+.landing-tagline {
+  margin: 14px 0 28px;
+  max-width: 560px;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--amber);
+}
+
+.landing-motive {
+  max-width: 620px;
+  margin: 0 0 8px;
+  line-height: 1.65;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* --- CTAs --- */
+
+.landing-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 28px;
+}
+
+.landing-cta-row--center {
+  margin: 12px 0 44px;
+}
+
+.landing-enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: 1px solid var(--emerald);
+  border-radius: 6px;
+  background: rgba(33, 208, 122, 0.1);
+  color: var(--emerald);
+  font: 0.85rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  transition: background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  box-shadow: 0 0 14px rgba(33, 208, 122, 0.12);
+}
+
+.landing-enter:hover {
+  background: rgba(33, 208, 122, 0.18);
+  box-shadow: 0 0 24px rgba(33, 208, 122, 0.3);
+  transform: translateY(-1px);
+}
+
+.landing-enter-arrow {
+  transition: transform 200ms ease;
+}
+
+.landing-enter:hover .landing-enter-arrow {
+  transform: translateX(4px);
+}
+
+.landing-skip {
+  font: 0.78rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.landing-skip:hover {
+  color: var(--text);
+  border-bottom-color: var(--muted);
+}
+
+.landing-enter-note {
+  margin: 16px 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* --- Pillars (shared: Home teaser + How It Works recap) --- */
+
+.landing-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  animation: landing-fade-up 900ms ease both;
+  margin-bottom: 44px;
+}
+
+.pillar {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 18px 18px 20px;
+}
+
+.pillar--emerald { border-left-color: var(--emerald); }
+.pillar--amber { border-left-color: var(--amber); }
+.pillar--crimson { border-left-color: var(--crimson); }
+
+.pillar-tag {
+  margin: 0 0 10px;
+  font: 0.72rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pillar--emerald .pillar-tag { color: var(--emerald); }
+.pillar--amber .pillar-tag { color: var(--amber); }
+.pillar--crimson .pillar-tag { color: var(--crimson); }
+
+.pillar-body {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* --- How It Works page: intro + numbered steps --- */
+
+.page-intro {
+  padding: 48px 0 8px;
+  max-width: 680px;
+  animation: landing-fade-up 700ms ease both;
+}
+
+.page-title {
+  margin: 6px 0 14px;
+  font-family: "Consolas", ui-monospace, monospace;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.page-lede {
+  margin: 0 0 40px;
+  line-height: 1.6;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 18px;
+  align-items: start;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 18px 20px;
+}
+
+.step-number {
+  margin: 0;
+  font-family: "Consolas", ui-monospace, monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--border);
+}
+
+.step-title {
+  margin: 2px 0 8px;
+  font: 0.8rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--emerald);
+}
+
+.step-body {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.landing-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  text-align: center;
+}
+
+.landing-footer p {
+  margin: 0;
+  font: 0.66rem "Consolas", ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+@keyframes landing-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 720px) {
+  .landing-pillars {
+    grid-template-columns: 1fr;
+  }
+  .landing-hero {
+    padding: 36px 0 28px;
+  }
+  .step {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}

@@ -1,6 +1,8 @@
 // DEBATE ENGINE — this is your #1 priority feature.
 // It makes Panel C look like a LIVE execution loop, not a static script.
-// Flow: (1) ingest & score -> (2) conflict/debate if agents disagree -> (3) final payload.
+// Flow: (1) Needs & Impact scores + demands -> (2) Resource & Logistics
+// checks the live depot/feasibility and either confirms or CHALLENGEs ->
+// (3) Command & Prioritization resolves any conflict into one dispatch plan.
 //
 // Supports TWO modes:
 // - Rule-based (default, always works, fully offline): buildRuleLines()
@@ -8,12 +10,25 @@
 // If real AI mode is on but the call fails for any reason (no internet, bad
 // key, rate limit), it automatically falls back to rule-based so the demo
 // never breaks.
+//
+// NOTE on naming: the CSS/JS "cls" values below (triage/logistics/commander)
+// are kept as internal plumbing from the original three-agent build — they
+// map 1:1 onto the current agents (triage -> Needs & Impact, logistics ->
+// Resource & Logistics, commander -> Command & Prioritization) so the
+// existing styling and animation code didn't need a risky mass-rename.
+// Every user-visible label below already reads "Needs & Impact" etc.
 
 let debateGeneration = 0;
 const debateTimers = new Set();
 let activePlayback = null;
 let playbackSpeed = 1;
 const PLAYBACK_SPEEDS = [1, 2, 0.5];
+
+// The most recent structured dispatch plan per scenario id, so a UI action
+// (or a curious teammate in devtools) can inspect the exact JSON payload
+// Command & Prioritization produced. Kept here since this is where it's
+// computed on every case selection.
+const latestDispatchPlans = {};
 
 function cancelDebate() {
   debateGeneration++;
@@ -38,16 +53,16 @@ function scheduleDebate(callback, delay, generation) {
 function lineBadge(line, lineIndex) {
   if (line.cls === "system") return "";
   if (line.cls === "commander") return "RESOLVE";
-  if (line.cls === "triage") return lineIndex === 0 ? "PROPOSE" : "COUNTER";
+  if (line.cls === "triage") return lineIndex === 0 ? "DEMAND" : "COUNTER";
   if (line.cls === "logistics") {
-    return /objection|hard constraint|delayed/i.test(line.text) ? "FLAG/REJECT" : "COUNTER";
+    return /CHALLENGE/i.test(line.text) ? "CHALLENGE" : "CONFIRM";
   }
   return "";
 }
 
 function playbackLines(lines) {
   return lines.filter((line) => !(
-    line.cls === "logistics" && /Route confirmed\. No objections\./i.test(line.text)
+    line.cls === "logistics" && /No objections\.$/i.test(line.text)
   ));
 }
 
@@ -63,6 +78,7 @@ function setPlaybackControls(state) {
   const pause = document.getElementById("debate-pause");
   const replay = document.getElementById("debate-replay");
   const speed = document.getElementById("debate-speed");
+  const dispatchJson = document.getElementById("dispatch-json-btn");
   if (pause) {
     pause.disabled = state === "idle";
     pause.textContent = state === "paused" ? "RESUME" : "PAUSE";
@@ -72,6 +88,7 @@ function setPlaybackControls(state) {
     speed.disabled = state === "idle";
     speed.textContent = `${playbackSpeed}x`;
   }
+  if (dispatchJson) dispatchJson.disabled = state === "idle";
 }
 
 function createTypingIndicator(line) {
@@ -234,75 +251,51 @@ document.getElementById("debate-pause").addEventListener("click", togglePlayback
 document.getElementById("debate-replay").addEventListener("click", replayDebate);
 document.getElementById("debate-speed").addEventListener("click", cyclePlaybackSpeed);
 
-function buildRuleLines(scenario) {
-  const triageResult = triageAssess(scenario);
-  const logisticsResult = logisticsCheck(scenario);
-  const commanderResult = commanderResolve(triageResult, logisticsResult, scenario);
-  const objection = typeof logisticsResult.objection === "string"
-    ? logisticsResult.objection.trim()
-    : "";
-  const isDelayed = String(logisticsResult.status || "").toUpperCase() === "DELAYED";
-  const objectionText = objection.replace(/^Objection:\s*/i, "").trim();
-  const recommendationMarker = /\bRecommend(?:s|ed)?\s+/i;
-  const recommendation = objectionText.match(recommendationMarker);
-  let alternative = recommendation
-    ? objectionText.slice(recommendation.index + recommendation[0].length).replace(/[.!?]+$/, "").trim()
-    : "";
-  alternative = alternative
-    .replace(/\s+once clearance is confirmed$/i, "")
-    .replace(/\s+instead$/i, "")
-    .trim();
-  const reason = recommendation
-    ? objectionText.slice(0, recommendation.index).trim().replace(/[.!?]+$/, "").trim()
-    : String(logisticsResult.risk || scenario.logisticsRisk || "route constraints")
-        .replace(/[.!?]+$/, "")
-        .trim();
-  const constraint = String(logisticsResult.risk || reason || "the stated physical constraint")
-    .replace(/^Delayed:\s*/i, "")
-    .replace(/[.!?]+$/, "")
-    .trim();
-  const panicRating = Number(triageResult.panicRating) || 0;
-  const lifeThreat = String(triageResult.lifeThreat || "elevated").toUpperCase();
-  const urgent = panicRating >= 90 || lifeThreat === "CRITICAL";
-  const canOverride = urgent && scenario.assetSurvivable === true;
-  const finalPlan = String(commanderResult.finalPlan || "").replace(/\.{2,}/g, ".");
-
+// Turns three already-computed structured agent results into the on-screen
+// debate script: Needs & Impact issues its DEMAND, Resource & Logistics
+// either CONFIRMs or CHALLENGEs it against the live depot + feasibility
+// matrix, and (only when there's a challenge) Needs & Impact reasserts
+// urgency before Command & Prioritization resolves it.
+function buildRuleLines(needs, resources, command) {
   const lines = [
-    { cls: "triage", text: `[TRIAGE] ${triageResult.proposal}` }
+    {
+      cls: "triage",
+      text: `[NEEDS & IMPACT] ${needs.narrative} Priority score ${needs.priorityScore} — ${needs.populationAtRisk} at risk, ${Math.round(needs.cascadeProbability * 100)}% cascade risk.`
+    }
   ];
 
-  if (objection || isDelayed) {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] Hard constraint: ${constraint}.` });
-    const urgency = urgent
-      ? `Life threat ${lifeThreat}, panic rating ${panicRating} — requesting controlled override; time-critical.`
-      : `Panic rating ${panicRating}, life threat ${lifeThreat} — urgency noted, but the constraint remains active.`;
-    lines.push({ cls: "triage", text: `[TRIAGE] ${urgency}` });
-
-    const consequence = isDelayed
-      ? `Proceeding before clearance risks asset loss and mission failure; ${alternative || "the alternate asset"} remains the safer option.`
-      : `Ignoring ${constraint.toLowerCase()} risks asset loss and total mission failure; ${alternative || "the alternate asset"} is the viable fallback.`;
-    lines.push({ cls: "logistics", text: `[LOGISTICS] ${consequence}` });
-  } else {
-    lines.push({ cls: "logistics", text: `[LOGISTICS] Route confirmed. No objections.` });
-  }
-
-  if (objection || isDelayed) {
-    lines.push({ cls: "system", text: `[SYSTEM] Cross-referencing asset telemetry...` });
-    const decision = canOverride
-      ? `OVERRIDE: ${String(triageResult.proposal || finalPlan).replace(/\s*immediately\.?$/i, "").trim()}.`
-      : finalPlan;
+  if (resources.fullyFeasible) {
     lines.push({
-      cls: "commander",
-      text: `[COMMANDER] Weighing Triage's urgency call against Logistics' ${constraint.toLowerCase()} — decision: ${decision}`
+      cls: "logistics",
+      text: `[RESOURCE & LOGISTICS] Feasibility ${Math.round(resources.accessFeasibilityIndex * 100)}%. Allocated: ${summarizeAllocations(resources.allocations)}. No objections.`
     });
-    return lines;
+  } else {
+    lines.push({
+      cls: "logistics",
+      text: `[RESOURCE & LOGISTICS] CHALLENGE: ${resources.constraint || "resourcing constraint"} — ${resources.counterProposal.summary}.`
+    });
+    lines.push({ cls: "triage", text: `[NEEDS & IMPACT] ${urgentReassertion(needs)}` });
+    lines.push({ cls: "system", text: `[SYSTEM] Cross-referencing live inventory and feasibility matrix...` });
   }
 
-  lines.push({ cls: "commander", text: `[COMMANDER] ${finalPlan}` });
+  lines.push({ cls: "commander", text: `[COMMAND & PRIORITIZATION] ${command.finalPlan}` });
   return lines;
 }
 
-function renderVerdictSummary(log, triageResult, logisticsResult, commanderResult) {
+function urgentReassertion(needs) {
+  const urgent = needs.panicRating >= 90 || needs.lifeThreat === "CRITICAL";
+  return urgent
+    ? `Life threat ${needs.lifeThreat}, priority score ${needs.priorityScore} — requesting controlled override; time-critical.`
+    : `Priority score ${needs.priorityScore}, life threat ${needs.lifeThreat} — urgency noted, but the constraint remains active.`;
+}
+
+function summarizeAllocations(allocations) {
+  const granted = allocations.filter((a) => a.granted > 0);
+  if (!granted.length) return "no additional resources required";
+  return granted.map((a) => `${a.granted} ${a.label || a.type.replace(/_/g, " ")}`).join(", ");
+}
+
+function renderVerdictSummary(log, needs, resources, command) {
   const existing = log.parentElement.querySelector(".verdict-summary");
   if (existing) existing.remove();
 
@@ -310,18 +303,19 @@ function renderVerdictSummary(log, triageResult, logisticsResult, commanderResul
     const value = String(text || "").replace(/\s+/g, " ").trim();
     return value.length > maxLength ? `${value.slice(0, maxLength - 1).trim()}…` : value;
   };
-  const logisticsSummary = logisticsResult.objection
-    ? logisticsResult.objection
-    : "No objection, cleared to proceed.";
-  const triageSummary = `${triageResult.lifeThreat || "Unknown"} threat, panic ${triageResult.panicRating ?? "n/a"}: ${triageResult.proposal || "No proposal."}`;
+
+  const needsSummary = `${needs.lifeThreat} threat, priority ${needs.priorityScore} (${needs.populationAtRisk} at risk, ${Math.round(needs.cascadeProbability * 100)}% cascade)`;
+  const resourceSummary = resources.fullyFeasible
+    ? `Feasibility ${Math.round(resources.accessFeasibilityIndex * 100)}% — ${summarizeAllocations(resources.allocations)}`
+    : `CHALLENGE — ${resources.constraint || "constraint"}: ${resources.counterProposal.summary}`;
 
   const summary = document.createElement("aside");
   summary.className = "verdict-summary";
   summary.setAttribute("aria-label", "Verdict summary");
   [
-    ["Triage", triageSummary],
-    ["Logistics", logisticsSummary],
-    ["Commander", commanderResult.finalPlan || "No final decision."]
+    ["Needs & Impact", needsSummary],
+    ["Resource & Logistics", resourceSummary],
+    ["Command", command.finalPlan || "No final decision."]
   ].forEach(([agent, text]) => {
     const line = document.createElement("p");
     line.className = "verdict-summary-line";
@@ -343,14 +337,47 @@ async function runDebate(scenario) {
   setPlaybackControls("idle");
   setDebateProgress(0, 0);
 
-  const summaryTriage = triageAssess(scenario);
-  const summaryLogistics = logisticsCheck(scenario);
-  const summaryCommander = commanderResolve(summaryTriage, summaryLogistics, scenario);
-  renderVerdictSummary(log, summaryTriage, summaryLogistics, summaryCommander);
+  const inventory = typeof resourceInventory !== "undefined" ? resourceInventory : [];
+  const depotList = typeof depots !== "undefined" ? depots : [];
+  const { needs, resources, command } = runAgenticCommandCore(scenario, inventory, depotList);
+  latestDispatchPlans[scenario.id] = command.dispatchPlan;
+  renderVerdictSummary(log, needs, resources, command);
+  if (typeof clearGroqPanels === "function") clearGroqPanels(); // reset stale draft text from the previous case
 
   let lines;
 
-  if (USE_REAL_AI && AEGIS_API_KEY) {
+  if (typeof USE_GROQ !== "undefined" && USE_GROQ && GROQ_API_KEY) {
+    if (!navigator.onLine) {
+      // offline_behavior: never queue the call — just fall back for this
+      // round and let the operator re-trigger once back online.
+      // NOTE: this notice used to be appended straight to #debate-log via
+      // appendDecisionLog(), but startPlayback() below unconditionally does
+      // log.innerHTML = "" as its first action, which wiped it out before
+      // the operator ever saw it. Fix: fold it into the lines array itself
+      // so it survives as the first card in the playback sequence.
+      lines = buildRuleLines(needs, resources, command);
+      lines.unshift({ cls: "system", text: "[SYSTEM] Offline — Groq dispatch agents unavailable this round. Using local fallback logic." });
+    } else {
+      const p = document.createElement("p");
+      p.className = "commander";
+      p.textContent = "[SYSTEM] Routing to Groq dispatch agents...";
+      log.appendChild(p);
+      try {
+        lines = await buildGroqLines(scenario);
+        if (generation !== debateGeneration) return;
+        log.innerHTML = ""; // clear the "routing" message once real lines are ready
+      } catch (err) {
+        console.warn("Groq call failed, falling back to rule-based logic:", err);
+        if (generation !== debateGeneration) return;
+        // Same fix as above: don't append a DOM node here, it gets wiped by
+        // startPlayback()'s log.innerHTML = "" a few lines down. Prepend a
+        // system line to the actual lines array instead so it plays back
+        // and stays on screen.
+        lines = buildRuleLines(needs, resources, command);
+        lines.unshift({ cls: "system", text: `[SYSTEM] Groq call failed (${err && err.message ? err.message : "unknown error"}) — using local fallback logic.` });
+      }
+    }
+  } else if (USE_REAL_AI && AEGIS_API_KEY) {
     const p = document.createElement("p");
     p.className = "commander";
     p.textContent = "[SYSTEM] Contacting AI agents...";
@@ -362,15 +389,12 @@ async function runDebate(scenario) {
     } catch (err) {
       console.warn("Real AI call failed, falling back to rule-based logic:", err);
       if (generation !== debateGeneration) return;
-      log.innerHTML = "";
-      const fallbackNotice = document.createElement("p");
-      fallbackNotice.className = "logistics";
-      fallbackNotice.textContent = "[SYSTEM] AI call failed — using local fallback logic.";
-      log.appendChild(fallbackNotice);
-      lines = buildRuleLines(scenario);
+      // Same startPlayback()-wipes-the-log fix as the Groq branch above.
+      lines = buildRuleLines(needs, resources, command);
+      lines.unshift({ cls: "system", text: `[SYSTEM] AI call failed (${err && err.message ? err.message : "unknown error"}) — using local fallback logic.` });
     }
   } else {
-    lines = buildRuleLines(scenario);
+    lines = buildRuleLines(needs, resources, command);
   }
 
   if (generation !== debateGeneration) return;

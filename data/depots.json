@@ -1,0 +1,26 @@
+[
+  {
+    "id": "DEPOT-KTM-01",
+    "name": "Kathmandu HQ Depot",
+    "lat": 27.7,
+    "lon": 85.32,
+    "gridX": 646.6,
+    "gridY": 288.4
+  },
+  {
+    "id": "DEPOT-PKR-01",
+    "name": "Pokhara Regional Depot",
+    "lat": 28.21,
+    "lon": 83.96,
+    "gridX": 479.8,
+    "gridY": 234.9
+  },
+  {
+    "id": "DEPOT-BRT-01",
+    "name": "Biratnagar Regional Depot",
+    "lat": 26.453,
+    "lon": 87.28,
+    "gridX": 887.1,
+    "gridY": 419.2
+  }
+]

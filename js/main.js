@@ -2,6 +2,8 @@
 // It loads mock data, populates Panel A's case list, and wires up interactions.
 
 let scenarios = [];
+let resourceInventory = [];
+let depots = [];
 let resolvedIds = new Set();
 let deniedIds = new Set();
 let heldIds = new Set();
@@ -20,6 +22,45 @@ async function loadScenarios() {
   renderCaseList();
   updateIncidentCounter();
   renderMapLegend();
+  renderCascadeGlow();
+  renderCascadeWatchZones();
+}
+
+// Loads the Resource & Logistics Agent's live depot — Available/Deployed/
+// Reserved/Low counts across every resource category. Deploying via the
+// approve button moves units from Available to Deployed (see applyAllocations
+// in resourceLogisticsAgent.js); nothing else mutates this at runtime.
+async function loadResources() {
+  const res = await fetch("data/resources.json");
+  resourceInventory = await res.json();
+  renderResourceInventory();
+}
+
+// The physical depots a dispatch plan's allocations are drawn from — used
+// to pick the nearest source depot for each plan and to render Base markers
+// on the tactical map.
+async function loadDepots() {
+  const res = await fetch("data/depots.json");
+  depots = await res.json();
+  renderDepotMarkers();
+}
+
+function renderResourceInventory() {
+  const container = document.getElementById("resource-inventory");
+  if (!container) return;
+  container.innerHTML = "";
+  resourceInventory.forEach((item) => {
+    const status = item.available <= 0 ? "critical" : item.available <= item.lowThreshold ? "low" : "ok";
+    const chip = document.createElement("div");
+    chip.className = `resource-chip status-${status}`;
+    chip.innerHTML = `
+      <span class="resource-chip-label">${item.label}</span>
+      <div class="resource-chip-counts">
+        <span>Avail: <strong>${item.available}</strong>/${item.total}</span>
+        <span>Deployed: ${item.deployed}</span>
+      </div>`;
+    container.appendChild(chip);
+  });
 }
 
 function renderCaseList() {
@@ -145,8 +186,12 @@ document.getElementById("sound-toggle").addEventListener("click", (event) => {
   event.currentTarget.classList.toggle("muted", !enabled);
 });
 
-function getFinalCommanderResult(scenario) {
-  return commanderResolve(triageAssess(scenario), logisticsCheck(scenario), scenario);
+// Runs the full Needs & Impact -> Resource & Logistics -> Command &
+// Prioritization pipeline for a scenario against the live inventory. Pure —
+// safe to call as many times as needed (re-selecting a case, refreshing the
+// map) since it never mutates resourceInventory itself.
+function getFinalDispatchResult(scenario) {
+  return runAgenticCommandCore(scenario, resourceInventory, depots);
 }
 
 function beginPanelTransition() {
@@ -176,18 +221,17 @@ function selectScenario(id) {
   beginPanelTransition();
   resetDecisionControls();
 
-  // Update Panel A voice module
+  // Update Panel A case signal display
   document.getElementById("transcript").textContent = scenario.transcript;
   document.getElementById("hazard-tag").textContent = scenario.hazardTag;
   document.getElementById("stress-fill").style.width = scenario.stressIndex + "%";
-  renderWaveform();
 
   // Update Panel B map
   renderHazardRing(scenario);
   resetAssetPosition();
   let displayAssetType = scenario.assetType;
   if (resolvedIds.has(scenario.id)) {
-    displayAssetType = getFinalCommanderResult(scenario).finalAssetType;
+    displayAssetType = getFinalDispatchResult(scenario).command.finalAssetType;
     restoreDeployedAsset(scenario, displayAssetType);
   }
   updateMapInfo(scenario, displayAssetType);
@@ -198,8 +242,11 @@ function selectScenario(id) {
 
 document.getElementById("approve-btn").addEventListener("click", () => {
   if (!activeScenario) return;
-  const commanderResult = getFinalCommanderResult(activeScenario);
-  moveAssetToScenario(activeScenario, commanderResult.finalAssetType);
+  const result = getFinalDispatchResult(activeScenario);
+  applyAllocations(resourceInventory, result.resources.allocations);
+  signDispatchPlan(result.command.dispatchPlan, "APPROVED");
+  latestDispatchPlans[activeScenario.id] = result.command.dispatchPlan;
+  moveAssetToScenario(activeScenario, result.command.finalAssetType);
   playConfirm();
   resolvedIds.add(activeScenario.id);
   deniedIds.delete(activeScenario.id);
@@ -208,7 +255,8 @@ document.getElementById("approve-btn").addEventListener("click", () => {
   setDecisionControlsDisabled(true);
   renderCaseList();
   updateIncidentCounter();
-  updateMapInfo(activeScenario, commanderResult.finalAssetType);
+  updateMapInfo(activeScenario, result.command.finalAssetType);
+  renderResourceInventory();
 });
 
 document.getElementById("deny-btn").addEventListener("click", () => {
@@ -240,6 +288,7 @@ document.getElementById("hold-btn").addEventListener("click", () => {
   heldIds.add(activeScenario.id);
   resolvedIds.delete(activeScenario.id);
   deniedIds.delete(activeScenario.id);
+  if (latestDispatchPlans[activeScenario.id]) signDispatchPlan(latestDispatchPlans[activeScenario.id], "HELD");
   appendDecisionLog("[SYSTEM] Held for later review — no action taken.");
   renderCaseList();
   updateIncidentCounter();
@@ -252,6 +301,7 @@ function finalizeDeny(reason) {
   deniedIds.add(activeScenario.id);
   resolvedIds.delete(activeScenario.id);
   heldIds.delete(activeScenario.id);
+  if (latestDispatchPlans[activeScenario.id]) signDispatchPlan(latestDispatchPlans[activeScenario.id], "DENIED");
   appendDecisionLog(`[SYSTEM] Human override — plan denied (${reason}). Case flagged for manual reassignment.`);
   document.getElementById("deny-reason-panel").hidden = true;
   document.querySelector(".other-reason-row").hidden = true;
@@ -310,64 +360,6 @@ function runBootSequence() {
   }, 2500);
 }
 
-// Speaker button — plays the transcript aloud using the browser's built-in
-// text-to-speech (works offline in most browsers, no API needed)
-let speechVoices = [];
-let activeUtterance = null;
-
-function refreshSpeechVoices() {
-  if (window.speechSynthesis) speechVoices = window.speechSynthesis.getVoices();
-}
-
-refreshSpeechVoices();
-if (window.speechSynthesis) {
-  if (typeof window.speechSynthesis.addEventListener === "function") {
-    window.speechSynthesis.addEventListener("voiceschanged", refreshSpeechVoices);
-  } else {
-    window.speechSynthesis.onvoiceschanged = refreshSpeechVoices;
-  }
-}
-
-document.getElementById("speak-btn").addEventListener("click", () => {
-  if (!activeScenario) return;
-  speakTranscript(activeScenario.transcript);
-});
-
-function speakTranscript(text) {
-  const synth = window.speechSynthesis;
-  const button = document.getElementById("speak-btn");
-  if (!synth) {
-    button.title = "Text-to-speech isn't supported in this browser";
-    return;
-  }
-
-  refreshSpeechVoices();
-  synth.cancel(); // Stop an earlier utterance before starting this click's fresh one.
-  const utter = new SpeechSynthesisUtterance(String(text || ""));
-  const preferredVoice = speechVoices.find(voice => /^en(-|_)/i.test(voice.lang)) || speechVoices[0];
-  if (preferredVoice) utter.voice = preferredVoice;
-  utter.lang = preferredVoice ? preferredVoice.lang : "en-US";
-  utter.rate = 1.05;
-  activeUtterance = utter;
-  button.classList.add("speaking");
-  button.setAttribute("aria-pressed", "true");
-  button.title = "Stop speaking";
-
-  const clearSpeakingState = () => {
-    if (activeUtterance !== utter) return;
-    activeUtterance = null;
-    button.classList.remove("speaking");
-    button.setAttribute("aria-pressed", "false");
-    button.title = "Play transcript aloud";
-  };
-  utter.onend = clearSpeakingState;
-  utter.onerror = clearSpeakingState;
-  synth.speak(utter);
-}
-
-// Live Voice Intake — real microphone speech-to-text (needs internet)
-document.getElementById("live-intake-btn").addEventListener("click", startVoiceIntake);
-
 // AI Mode toggle — switches between rule-based (default, offline-safe) and
 // real AI reasoning (needs your own API key + internet)
 document.getElementById("ai-mode-toggle").addEventListener("click", () => {
@@ -383,6 +375,8 @@ document.getElementById("ai-mode-toggle").addEventListener("click", () => {
       USE_REAL_AI = true;
       btn.textContent = "🧠 REAL AI MODE";
       btn.classList.add("ai-active");
+      // Only one AI provider drives the debate text at a time.
+      turnOffGroqMode();
     }
   } else {
     USE_REAL_AI = false;
@@ -392,6 +386,81 @@ document.getElementById("ai-mode-toggle").addEventListener("click", () => {
   }
 });
 
-renderWaveform();
+// GROQ AGENTS toggle — per GROQ_DISPATCH_AGENTS_ROUTING.json: direct
+// frontend-to-Groq routing, key entered at runtime and kept in memory only
+// (same safe pattern as the Claude toggle above; see js/groqAgent.js's
+// header comment for the full routing-file-to-feature mapping).
+function turnOffGroqMode() {
+  const btn = document.getElementById("groq-mode-toggle");
+  USE_GROQ = false;
+  GROQ_API_KEY = null;
+  if (btn) {
+    btn.textContent = "⚡ GROQ AGENTS OFF";
+    btn.classList.remove("ai-active");
+  }
+  clearGroqPanels();
+}
+
+document.getElementById("groq-mode-toggle")?.addEventListener("click", () => {
+  const btn = document.getElementById("groq-mode-toggle");
+  if (!USE_GROQ) {
+    if (!navigator.onLine) {
+      appendDecisionLog("[SYSTEM] Groq dispatch agents need internet — currently offline.");
+      return;
+    }
+    const key = prompt(
+      "Enter your Groq API key to give the three dispatch agents real reasoning.\n" +
+      "Get one at console.groq.com — this stays in this browser tab's memory only " +
+      "and is never written to any project file.\n" +
+      "Leave blank to cancel and stay in rule-based mode."
+    );
+    if (!key || !key.trim()) return;
+    const model = prompt(
+      "Groq model to use for all three agents (one shared model, per the routing spec):",
+      GROQ_MODEL
+    );
+    if (model && model.trim()) {
+      GROQ_MODEL = model.trim();
+      localStorage.setItem("aegisGroqModel", GROQ_MODEL);
+    }
+    GROQ_API_KEY = key.trim();
+    USE_GROQ = true;
+    btn.textContent = "⚡ GROQ AGENTS ON";
+    btn.classList.add("ai-active");
+    // Only one AI provider drives the debate text at a time.
+    USE_REAL_AI = false;
+    AEGIS_API_KEY = null;
+    const claudeBtn = document.getElementById("ai-mode-toggle");
+    if (claudeBtn) {
+      claudeBtn.textContent = "🧠 RULE-BASED MODE";
+      claudeBtn.classList.remove("ai-active");
+    }
+    appendDecisionLog(`[SYSTEM] Groq dispatch agents enabled — model: ${GROQ_MODEL} (recorded ${new Date().toLocaleString()}). Note this in the operator runbook.`);
+  } else {
+    turnOffGroqMode();
+  }
+});
+
+window.addEventListener("DOMContentLoaded", refreshGroqAvailability);
+
+document.getElementById("dispatch-json-btn")?.addEventListener("click", () => {
+  if (!activeScenario) return;
+  const plan = latestDispatchPlans[activeScenario.id];
+  if (!plan) return;
+  const json = JSON.stringify(plan, null, 2);
+  const done = () => appendDecisionLog("[SYSTEM] Dispatch plan JSON copied to clipboard.");
+  const fallback = () => {
+    console.log(json);
+    appendDecisionLog("[SYSTEM] Clipboard unavailable — dispatch plan JSON logged to console.");
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(json).then(done).catch(fallback);
+  } else {
+    fallback();
+  }
+});
+
 loadScenarios();
+loadResources();
+loadDepots();
 runBootSequence();

@@ -9,7 +9,11 @@
     "mapY": 40,
     "logisticsRisk": "Low cloud and limited landing-zone clearance make helicopter insertion hazardous.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 27.685,
+    "lon": 85.29,
+    "gridX": 642.9,
+    "gridY": 290.0
   },
   {
     "id": "sindhupalchok-landslide-01",
@@ -21,7 +25,11 @@
     "mapY": 25,
     "logisticsRisk": "High winds make drone flight marginal over the unstable slope.",
     "assetSurvivable": true,
-    "assetType": "drone"
+    "assetType": "drone",
+    "lat": 27.833,
+    "lon": 85.683,
+    "gridX": 691.2,
+    "gridY": 274.5
   },
   {
     "id": "kathmandu-collapse-01",
@@ -33,7 +41,11 @@
     "mapY": 60,
     "logisticsRisk": "Debris blocks direct vehicle access, so the ground team must approach on foot.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.717,
+    "lon": 85.324,
+    "gridX": 647.1,
+    "gridY": 286.6
   },
   {
     "id": "bhaktapur-fire-01",
@@ -45,7 +57,11 @@
     "mapY": 45,
     "logisticsRisk": "Narrow alley blocks fire truck. Foot team only.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.671,
+    "lon": 85.429,
+    "gridX": 660.0,
+    "gridY": 291.5
   },
   {
     "id": "pokhara-lakeside-flood-01",
@@ -57,7 +73,11 @@
     "mapY": 55,
     "logisticsRisk": "Strong winds and spray reduce helicopter visibility near the outlet.",
     "assetSurvivable": true,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 28.209,
+    "lon": 83.959,
+    "gridX": 479.6,
+    "gridY": 235.0
   },
   {
     "id": "melamchi-flood-01",
@@ -69,7 +89,11 @@
     "mapY": 70,
     "logisticsRisk": "Marginal weather and limited rooftop landing clearance make helicopter rescue hazardous.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 27.847,
+    "lon": 85.548,
+    "gridX": 674.6,
+    "gridY": 273.0
   },
   {
     "id": "chitwan-wildfire-01",
@@ -81,7 +105,11 @@
     "mapY": 20,
     "logisticsRisk": "Evacuation route still open, but the fire is advancing toward it quickly.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.629,
+    "lon": 84.43,
+    "gridX": 537.4,
+    "gridY": 295.9
   },
   {
     "id": "gorkha-earthquake-01",
@@ -93,7 +121,11 @@
     "mapY": 15,
     "logisticsRisk": "Structure unstable, ground team must wait for engineer clearance.",
     "assetSurvivable": false,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 28.0,
+    "lon": 84.629,
+    "gridX": 561.8,
+    "gridY": 257.0
   },
   {
     "id": "birgunj-flood-01",
@@ -105,7 +137,11 @@
     "mapY": 50,
     "logisticsRisk": "Road passable only by a heavy-duty off-road vehicle.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.017,
+    "lon": 84.867,
+    "gridX": 591.0,
+    "gridY": 360.0
   },
   {
     "id": "dolakha-landslide-02",
@@ -117,7 +153,11 @@
     "mapY": 80,
     "logisticsRisk": "Slope still active, delay ground approach 10+ minutes.",
     "assetSurvivable": false,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.662,
+    "lon": 86.171,
+    "gridX": 751.0,
+    "gridY": 292.4
   },
   {
     "id": "butwal-flood-02",
@@ -129,7 +169,11 @@
     "mapY": 65,
     "logisticsRisk": "Hazmat precautions required before ground entry.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.7,
+    "lon": 83.448,
+    "gridX": 416.9,
+    "gridY": 288.4
   },
   {
     "id": "ilam-landslide-01",
@@ -141,7 +185,11 @@
     "mapY": 30,
     "logisticsRisk": "Terrain too steep for vehicles, foot team only.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 26.909,
+    "lon": 87.926,
+    "gridX": 966.4,
+    "gridY": 371.4
   },
   {
     "id": "biratnagar-storm-01",
@@ -153,7 +201,11 @@
     "mapY": 30,
     "logisticsRisk": "High winds and loose roof debris make ground approach hazardous.",
     "assetSurvivable": false,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 26.453,
+    "lon": 87.28,
+    "gridX": 887.1,
+    "gridY": 419.2
   },
   {
     "id": "nuwakot-flood-01",
@@ -165,7 +217,11 @@
     "mapY": 35,
     "logisticsRisk": "Moderate wind and a shrinking landing zone make helicopter approach hazardous.",
     "assetSurvivable": true,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 27.858,
+    "lon": 85.176,
+    "gridX": 629.0,
+    "gridY": 271.8
   },
   {
     "id": "kavre-landslide-01",
@@ -177,7 +233,11 @@
     "mapY": 55,
     "logisticsRisk": "Alternate road available, adds 15 minutes.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.622,
+    "lon": 85.552,
+    "gridX": 675.1,
+    "gridY": 296.6
   },
   {
     "id": "jhapa-flood-01",
@@ -189,7 +249,11 @@
     "mapY": 60,
     "logisticsRisk": "Heavy rain and poor visibility may prevent a safe helicopter approach.",
     "assetSurvivable": true,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 26.551,
+    "lon": 88.078,
+    "gridX": 985.0,
+    "gridY": 408.9
   },
   {
     "id": "rasuwa-avalanche-01",
@@ -201,7 +265,13 @@
     "mapY": 75,
     "logisticsRisk": "Closing weather and poor visibility are narrowing the helicopter rescue window.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "populationAtRisk": 6,
+    "cascadeProbability": 0.55,
+    "lat": 28.22,
+    "lon": 85.4,
+    "gridX": 656.4,
+    "gridY": 233.9
   },
   {
     "id": "lalitpur-collapse-01",
@@ -213,7 +283,11 @@
     "mapY": 20,
     "logisticsRisk": "Unstable debris makes cautious ground entry necessary.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.662,
+    "lon": 85.324,
+    "gridX": 647.1,
+    "gridY": 292.4
   },
   {
     "id": "dhading-flood-01",
@@ -225,7 +299,11 @@
     "mapY": 15,
     "logisticsRisk": "The narrow river corridor offers limited landing-zone clearance for a helicopter approach.",
     "assetSurvivable": true,
-    "assetType": "air"
+    "assetType": "air",
+    "lat": 27.86,
+    "lon": 84.9,
+    "gridX": 595.1,
+    "gridY": 271.6
   },
   {
     "id": "kathmandu-gas-01",
@@ -237,7 +315,11 @@
     "mapY": 55,
     "logisticsRisk": "No powered equipment allowed near site until cleared.",
     "assetSurvivable": false,
-    "assetType": "ground"
+    "assetType": "ground",
+    "lat": 27.7,
+    "lon": 85.31,
+    "gridX": 645.4,
+    "gridY": 288.4
   },
   {
     "id": "rasuwa-flood-01",
@@ -249,7 +331,13 @@
     "mapY": 45,
     "logisticsRisk": "Highway bridge access cut off, debris blocking the only road in. Boat or air required.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "populationAtRisk": 6,
+    "cascadeProbability": 0.4,
+    "lat": 27.97,
+    "lon": 85.15,
+    "gridX": 625.8,
+    "gridY": 260.1
   },
   {
     "id": "rasuwa-flood-02",
@@ -261,7 +349,13 @@
     "mapY": 30,
     "logisticsRisk": "Landslide-prone slopes above site, ground approach unsafe until slope check clears.",
     "assetSurvivable": false,
-    "assetType": "ground"
+    "assetType": "ground",
+    "populationAtRisk": 60,
+    "cascadeProbability": 0.75,
+    "lat": 28.28,
+    "lon": 85.32,
+    "gridX": 646.6,
+    "gridY": 227.6
   },
   {
     "id": "rasuwa-flood-03",
@@ -273,7 +367,13 @@
     "mapY": 60,
     "logisticsRisk": "Current too strong for foot crossing, swift-water rescue boat needed.",
     "assetSurvivable": true,
-    "assetType": "boat"
+    "assetType": "boat",
+    "populationAtRisk": 4,
+    "cascadeProbability": 0.3,
+    "lat": 28.21,
+    "lon": 85.52,
+    "gridX": 671.2,
+    "gridY": 234.9
   },
   {
     "id": "rasuwa-flood-04",
@@ -285,7 +385,13 @@
     "mapY": 20,
     "logisticsRisk": "Site access road partially collapsed, high-clearance vehicle or drone recon needed first.",
     "assetSurvivable": true,
-    "assetType": "drone"
+    "assetType": "drone",
+    "populationAtRisk": 12,
+    "cascadeProbability": 0.65,
+    "lat": 28.0,
+    "lon": 85.4,
+    "gridX": 656.4,
+    "gridY": 257.0
   },
   {
     "id": "rasuwa-flood-05",
@@ -297,7 +403,13 @@
     "mapY": 70,
     "logisticsRisk": "Ground team route passable but slow, medical evac priority.",
     "assetSurvivable": true,
-    "assetType": "ground"
+    "assetType": "ground",
+    "populationAtRisk": 15,
+    "cascadeProbability": 0.3,
+    "lat": 28.13,
+    "lon": 85.27,
+    "gridX": 640.5,
+    "gridY": 243.3
   },
   {
     "id": "rasuwa-flood-06",
@@ -309,7 +421,13 @@
     "mapY": 55,
     "logisticsRisk": "No bridge access, helicopter is the only fast option before nightfall.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "populationAtRisk": 8,
+    "cascadeProbability": 0.35,
+    "lat": 28.175,
+    "lon": 85.34,
+    "gridX": 649.1,
+    "gridY": 238.6
   },
   {
     "id": "rasuwa-flood-07",
@@ -321,7 +439,13 @@
     "mapY": 40,
     "logisticsRisk": "Extreme current below collapsed bridge, only air extraction is safe.",
     "assetSurvivable": false,
-    "assetType": "air"
+    "assetType": "air",
+    "populationAtRisk": 2,
+    "cascadeProbability": 0.45,
+    "lat": 28.05,
+    "lon": 85.15,
+    "gridX": 625.8,
+    "gridY": 251.7
   },
   {
     "id": "rasuwa-flood-08",
@@ -333,6 +457,12 @@
     "mapY": 50,
     "logisticsRisk": "Ground team blocked by active slide, wait for engineer clearance or use aerial recon.",
     "assetSurvivable": false,
-    "assetType": "drone"
+    "assetType": "drone",
+    "populationAtRisk": 45,
+    "cascadeProbability": 0.85,
+    "lat": 28.17,
+    "lon": 85.13,
+    "gridX": 623.3,
+    "gridY": 239.1
   }
 ]
