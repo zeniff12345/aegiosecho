@@ -610,6 +610,23 @@ body {
   background: var(--bg);
 }
 
+/* Standard OpenStreetMap tiles are light by default -- this recolors the
+   tile PIXELS only (map data/markers are unaffected, since the filter is
+   scoped to Leaflet's dedicated tile pane) into a dark theme matching the
+   rest of the HUD. */
+.leaflet-map .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* "Labels" sidebar checkbox hides our own text labels (depot names,
+   cascade-watch callouts, province reference names) -- see toggleLayer()
+   in js/mapEngine.js. */
+.hide-map-labels .depot-label-html,
+.hide-map-labels .cascade-watch-label-html,
+.hide-map-labels .province-label-html {
+  display: none;
+}
+
 /* Leaflet's own chrome, re-themed to match the HUD look instead of its
    light-mode defaults. */
 .leaflet-control-attribution {

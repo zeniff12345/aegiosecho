@@ -1,9 +1,15 @@
 // MAP ENGINE — Panel B logic.
-// A real, pannable/zoomable Leaflet map of Nepal, using free OpenStreetMap-
-// derived tiles (CARTO's dark basemap, which is itself rendered from OSM
-// data) instead of the earlier hand-projected SVG grid. This needs internet
-// at runtime to load map tiles — consistent with the pitch's corrected
-// "graceful degradation to rule-based logic," not a "100% offline" claim.
+// A real, pannable/zoomable Leaflet map of Nepal, using the actual
+// OpenStreetMap tile servers (tile.openstreetmap.org -- free, no API key)
+// instead of the earlier hand-projected SVG grid. A CSS filter recolors the
+// tiles dark to match the HUD theme (see .leaflet-tile-pane in style.css);
+// an earlier version of this file used CARTO's "dark_nolabels" tiles, which
+// turned out to now require a paid/signed-up API key and rendered visible
+// "API KEY REQUIRED" watermark tiles -- switched to osm.org's own tiles to
+// fix that and because it's a closer match to what was actually asked for.
+// This needs internet at runtime to load map tiles — consistent with the
+// pitch's corrected "graceful degradation to rule-based logic," not a
+// "100% offline" claim.
 //
 // Every incident and depot in data/*.json already carries a real lat/lon
 // (see the README's map section for how those were sourced), so switching
@@ -22,9 +28,9 @@
 // one well-known city per province, NOT a boundary claim. See
 // PROVINCE_REFERENCE_POINTS below.
 //
-// Attribution (required by both providers' terms, and shown by Leaflet's
-// built-in attribution control automatically): map data & tiles
-// (c) OpenStreetMap contributors, tile styling (c) CARTO.
+// Attribution (required by OSM's tile usage policy, and shown by
+// Leaflet's built-in attribution control automatically): map data & tiles
+// (c) OpenStreetMap contributors.
 
 const NEPAL_CENTER = [28.395, 84.124];
 const DEFAULT_ZOOM = 7;
@@ -55,7 +61,6 @@ const ASSET_ICON_PATHS = {
 
 let leafletMap = null;
 let baseTileLayer = null;
-let labelsTileLayer = null;
 let hazardLayerGroup = null;
 let depotLayerGroup = null;
 let cascadeGlowLayerGroup = null;
@@ -82,20 +87,19 @@ function initLeafletMap() {
     attributionControl: true
   });
 
-  // CARTO Dark Matter tiles (free, no API key), rendered from OpenStreetMap
-  // data. "nolabels" as the base + a separate "only_labels" overlay lets the
-  // "Labels" sidebar checkbox toggle place names independently of terrain.
-  baseTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
-    maxZoom: 20,
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors ' +
-      '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
-  }).addTo(leafletMap);
-
-  labelsTileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
-    maxZoom: 20
+  // Standard OpenStreetMap raster tiles -- the actual osm.org tile
+  // servers, genuinely free with no API key or signup (unlike CARTO's
+  // basemaps.cartocdn.com, which now gates its "dark_nolabels"/
+  // "dark_only_labels" styles behind an API key -- that's what produced
+  // the "API KEY REQUIRED" watermark tiles). A CSS filter on the tile pane
+  // (see .leaflet-map .leaflet-tile-pane in style.css) inverts OSM's
+  // light default style into a dark one so it still matches the HUD
+  // theme; the underlying map data is untouched, only the pixels are
+  // recolored in the browser.
+  baseTileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    subdomains: "abc",
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
   }).addTo(leafletMap);
 
   hazardLayerGroup = L.layerGroup().addTo(leafletMap);
@@ -124,9 +128,10 @@ function toggleLayer(layer, visible) {
     return;
   }
   if (layer === "labels") {
-    if (!labelsTileLayer) return;
-    if (visible && !leafletMap.hasLayer(labelsTileLayer)) labelsTileLayer.addTo(leafletMap);
-    else if (!visible && leafletMap.hasLayer(labelsTileLayer)) leafletMap.removeLayer(labelsTileLayer);
+    // Toggles OUR OWN text labels (depot names, cascade-watch callouts,
+    // province reference names) -- not a basemap layer. This matches what
+    // this checkbox always did back when the map was a hand-drawn SVG.
+    document.getElementById("map-area")?.classList.toggle("hide-map-labels", !visible);
     return;
   }
 
