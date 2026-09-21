@@ -460,6 +460,143 @@ document.getElementById("dispatch-json-btn")?.addEventListener("click", () => {
   }
 });
 
+// EXPORT REPORT — the "agentic AI" report-export feature: turns the
+// already-computed dispatch decision + full debate transcript for the
+// active case into a downloadable PDF. No new API call — everything here
+// comes from latestReportData (captured in debateEngine.js the moment a
+// debate finishes computing, before playback starts) plus the live human
+// decision status (resolved/denied/held), read fresh at export time so the
+// PDF always reflects the current state even if exported well after the
+// debate finished.
+function currentDecisionStatus(scenarioId) {
+  if (resolvedIds.has(scenarioId)) return "APPROVED — asset deployed";
+  if (deniedIds.has(scenarioId)) return "DENIED";
+  if (heldIds.has(scenarioId)) return "HELD FOR LATER REVIEW";
+  return "PENDING — awaiting human authorization";
+}
+
+function agentLabelForLine(line) {
+  if (line.cls === "system") return "SYSTEM";
+  if (line.cls === "commander") return "COMMAND & PRIORITIZATION";
+  if (line.cls === "triage") return "NEEDS & IMPACT";
+  if (line.cls === "logistics") return "RESOURCE & LOGISTICS";
+  return line.cls.toUpperCase();
+}
+
+function stripAgentPrefix(text) {
+  return text.replace(/^\[[^\]]+\]\s*/, "");
+}
+
+function buildDispatchReportPdf(report) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 48;
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  function ensureSpace(lineHeight) {
+    if (y + lineHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  }
+
+  function writeLines(text, { fontStyle = "normal", fontSize = 10, lineHeight = 14, gapAfter = 6 } = {}) {
+    doc.setFont("helvetica", fontStyle);
+    doc.setFontSize(fontSize);
+    const wrapped = doc.splitTextToSize(String(text), maxWidth);
+    wrapped.forEach((wrappedLine) => {
+      ensureSpace(lineHeight);
+      doc.text(wrappedLine, margin, y);
+      y += lineHeight;
+    });
+    y += gapAfter;
+  }
+
+  function writeHeading(text) {
+    ensureSpace(22);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(text, margin, y);
+    y += 16;
+  }
+
+  writeLines("AEGIS ECHO — DISPATCH DECISION REPORT", { fontStyle: "bold", fontSize: 16, lineHeight: 20, gapAfter: 4 });
+  writeLines(
+    "AI-assisted draft output for human command review. Not a verified live feed — see data provenance below.",
+    { fontStyle: "italic", fontSize: 9, gapAfter: 12 }
+  );
+
+  writeHeading("Case");
+  writeLines(`${report.scenario.name}${report.scenario.region ? " — " + report.scenario.region : ""}`, { fontStyle: "bold" });
+  if (report.scenario.hazardTag) writeLines(`Hazard: ${report.scenario.hazardTag}`);
+  writeLines(`Stress Index: ${report.scenario.stressIndex}`);
+  if (report.scenario.transcript) writeLines(`Field transcript: "${report.scenario.transcript}"`);
+
+  writeHeading("Needs & Impact Agent");
+  writeLines(report.needs.narrative || "");
+  writeLines(
+    `Priority score ${report.needs.priorityScore} · ${report.needs.populationAtRisk} at risk · ` +
+    `${Math.round((report.needs.cascadeProbability || 0) * 100)}% cascade risk · Life threat: ${report.needs.lifeThreat}`
+  );
+
+  writeHeading("Resource & Logistics Agent");
+  if (report.resources.fullyFeasible) {
+    writeLines(`Feasibility ${Math.round((report.resources.accessFeasibilityIndex || 0) * 100)}% — no objections.`);
+    writeLines(`Allocated: ${summarizeAllocations(report.resources.allocations)}`);
+  } else {
+    writeLines(`CHALLENGE: ${report.resources.constraint || "resourcing constraint"}`);
+    writeLines(report.resources.counterProposal?.summary || "");
+  }
+
+  writeHeading("Command & Prioritization Agent");
+  writeLines(report.command.finalPlan || "");
+  if (report.command.finalAssetType) writeLines(`Final asset: ${report.command.finalAssetType}`);
+
+  writeHeading("Human Command Decision");
+  writeLines(currentDecisionStatus(report.scenario.id), { fontStyle: "bold" });
+
+  writeHeading("Reasoning Source");
+  writeLines(report.aiModelLabel ? `${report.aiSourceLabel} (model: ${report.aiModelLabel})` : report.aiSourceLabel);
+
+  writeHeading("Full Deliberation Transcript");
+  report.transcriptLines.forEach((line) => {
+    writeLines(agentLabelForLine(line), { fontStyle: "bold", fontSize: 9, gapAfter: 1 });
+    writeLines(stripAgentPrefix(line.text), { fontSize: 10, gapAfter: 8 });
+  });
+
+  writeLines(
+    `Report generated ${new Date(report.generatedAt).toLocaleString()} · Aegis Echo Command Dashboard`,
+    { fontStyle: "italic", fontSize: 8, gapAfter: 0 }
+  );
+
+  return doc;
+}
+
+document.getElementById("export-report-btn")?.addEventListener("click", () => {
+  if (!activeScenario) return;
+  const report = latestReportData?.[activeScenario.id];
+  if (!report) {
+    appendDecisionLog("[SYSTEM] No report data available for this case yet.");
+    return;
+  }
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    appendDecisionLog("[SYSTEM] PDF export unavailable — report library failed to load (needs internet).");
+    return;
+  }
+  try {
+    const doc = buildDispatchReportPdf(report);
+    const safeName = (report.scenario.name || "case").replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+    doc.save(`aegis-echo-report-${safeName}.pdf`);
+    appendDecisionLog("[SYSTEM] Dispatch report PDF downloaded.");
+  } catch (err) {
+    console.error("PDF export failed:", err);
+    appendDecisionLog(`[SYSTEM] PDF export failed (${err && err.message ? err.message : "unknown error"}).`);
+  }
+});
+
 loadScenarios();
 loadResources();
 loadDepots();

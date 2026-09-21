@@ -161,6 +161,7 @@
           <button id="debate-replay" type="button" class="playback-button" disabled>REPLAY</button>
           <button id="debate-speed" type="button" class="playback-button" disabled>1x</button>
           <button id="dispatch-json-btn" type="button" class="playback-button" disabled title="Copy the structured dispatch plan JSON for this case">JSON</button>
+          <button id="export-report-btn" type="button" class="playback-button" disabled title="Download a PDF report of this case's dispatch decision and debate transcript">PDF</button>
         </div>
       </div>
       <div id="debate-log" class="debate-log">
@@ -208,6 +209,12 @@
   <script src="js/groqAgent.js"></script>
   <!-- Field Data Ingestion Engine: standalone, not part of the agent debate pipeline -->
   <script src="js/fieldIngestion.js"></script>
+  <!-- jsPDF: client-side PDF generation for the "Export Report" button
+       (agentic-AI report export). No backend — builds the PDF from data
+       already computed at debate-completion time (see latestReportData in
+       js/debateEngine.js). If this CDN fails to load (offline demo), the
+       export button will no-op safely; see the guard in js/main.js. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

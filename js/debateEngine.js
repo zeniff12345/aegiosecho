@@ -30,6 +30,16 @@ const PLAYBACK_SPEEDS = [1, 2, 0.5];
 // computed on every case selection.
 const latestDispatchPlans = {};
 
+// The full report-relevant snapshot per scenario id, captured the moment a
+// debate finishes computing (right before playback starts) — everything the
+// "Export Report" PDF button needs: the scenario, the three agents'
+// structured results, the exact transcript lines shown on screen, which
+// reasoning source produced them, and when. Human decision status
+// (approved/denied/held) is read live from resolvedIds/deniedIds/heldIds at
+// export time in main.js, not stored here, so the PDF always reflects the
+// current state even if exported after the fact.
+const latestReportData = {};
+
 function cancelDebate() {
   debateGeneration++;
   debateTimers.forEach((timer) => clearTimeout(timer));
@@ -79,6 +89,7 @@ function setPlaybackControls(state) {
   const replay = document.getElementById("debate-replay");
   const speed = document.getElementById("debate-speed");
   const dispatchJson = document.getElementById("dispatch-json-btn");
+  const exportReport = document.getElementById("export-report-btn");
   if (pause) {
     pause.disabled = state === "idle";
     pause.textContent = state === "paused" ? "RESUME" : "PAUSE";
@@ -89,6 +100,10 @@ function setPlaybackControls(state) {
     speed.textContent = `${playbackSpeed}x`;
   }
   if (dispatchJson) dispatchJson.disabled = state === "idle";
+  // Report data is captured before startPlayback() runs (see runDebate()),
+  // so it's ready as soon as the debate has anything to show at all —
+  // same enable condition as the JSON button.
+  if (exportReport) exportReport.disabled = state === "idle";
 }
 
 function createTypingIndicator(line) {
@@ -345,6 +360,8 @@ async function runDebate(scenario) {
   if (typeof clearGroqPanels === "function") clearGroqPanels(); // reset stale draft text from the previous case
 
   let lines;
+  let aiSourceLabel = "Rule-based logic (offline-safe)";
+  let aiModelLabel = null;
 
   if (typeof USE_GROQ !== "undefined" && USE_GROQ && GROQ_API_KEY) {
     if (!navigator.onLine) {
@@ -357,6 +374,7 @@ async function runDebate(scenario) {
       // so it survives as the first card in the playback sequence.
       lines = buildRuleLines(needs, resources, command);
       lines.unshift({ cls: "system", text: "[SYSTEM] Offline — Groq dispatch agents unavailable this round. Using local fallback logic." });
+      aiSourceLabel = "Rule-based fallback (Groq offline)";
     } else {
       const p = document.createElement("p");
       p.className = "commander";
@@ -366,6 +384,8 @@ async function runDebate(scenario) {
         lines = await buildGroqLines(scenario);
         if (generation !== debateGeneration) return;
         log.innerHTML = ""; // clear the "routing" message once real lines are ready
+        aiSourceLabel = "Groq dispatch agents";
+        aiModelLabel = typeof GROQ_MODEL !== "undefined" ? GROQ_MODEL : null;
       } catch (err) {
         console.warn("Groq call failed, falling back to rule-based logic:", err);
         if (generation !== debateGeneration) return;
@@ -375,6 +395,7 @@ async function runDebate(scenario) {
         // and stays on screen.
         lines = buildRuleLines(needs, resources, command);
         lines.unshift({ cls: "system", text: `[SYSTEM] Groq call failed (${err && err.message ? err.message : "unknown error"}) — using local fallback logic.` });
+        aiSourceLabel = "Rule-based fallback (Groq call failed)";
       }
     }
   } else if (USE_REAL_AI && AEGIS_API_KEY) {
@@ -386,17 +407,41 @@ async function runDebate(scenario) {
       lines = await buildAILines(scenario);
       if (generation !== debateGeneration) return;
       log.innerHTML = ""; // clear the "contacting" message once real lines are ready
+      aiSourceLabel = "Claude AI agents";
+      aiModelLabel = "claude-sonnet-5";
     } catch (err) {
       console.warn("Real AI call failed, falling back to rule-based logic:", err);
       if (generation !== debateGeneration) return;
       // Same startPlayback()-wipes-the-log fix as the Groq branch above.
       lines = buildRuleLines(needs, resources, command);
       lines.unshift({ cls: "system", text: `[SYSTEM] AI call failed (${err && err.message ? err.message : "unknown error"}) — using local fallback logic.` });
+      aiSourceLabel = "Rule-based fallback (AI call failed)";
     }
   } else {
     lines = buildRuleLines(needs, resources, command);
   }
 
   if (generation !== debateGeneration) return;
+
+  // Snapshot everything the Export Report PDF needs, right before playback
+  // starts, while needs/resources/command/lines are all fresh for this run.
+  latestReportData[scenario.id] = {
+    scenario: {
+      id: scenario.id,
+      name: scenario.name,
+      region: scenario.region || scenario.location || scenario.place || "",
+      hazardTag: scenario.hazardTag || "",
+      stressIndex: scenario.stressIndex,
+      transcript: scenario.transcript || ""
+    },
+    needs,
+    resources,
+    command,
+    transcriptLines: playbackLines(lines).map((line) => ({ cls: line.cls, text: line.text })),
+    aiSourceLabel,
+    aiModelLabel,
+    generatedAt: new Date().toISOString()
+  };
+
   startPlayback(scenario, lines);
 }
