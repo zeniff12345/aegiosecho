@@ -44,6 +44,14 @@
 //   -- see refreshGroqAvailability() and the online/offline listeners at
 //   the bottom of this file. A failed/offline call always falls back to
 //   rule-based text (debateEngine.js) rather than retrying or queuing.
+// - historical grounding (added after launch, not in the original routing
+//   file) -- NEPAL_HISTORICAL_CONTEXT folds real Aug 2026 Nepal flood
+//   response data (WHO/OCHA, Wikipedia's aggregation of wire coverage) into
+//   every agent's system prompt so severity/resource judgment is calibrated
+//   against what actually happened here, not invented from nothing. It is
+//   explicitly precedent-only -- agents are told never to restate it as
+//   fact about whatever incident is currently on screen. Shown to the
+//   operator too, via buildProvenanceLine(), so the grounding isn't hidden.
 
 let GROQ_API_KEY = null;
 let USE_GROQ = false;
@@ -144,6 +152,31 @@ async function groqChat(messages, maxTokens = 150) {
   }
 }
 
+// ---- Real historical grounding (calibration only, never live incident data) --
+//
+// This is NOT data about whatever incident is currently selected on screen.
+// It's real Nepal disaster-response history, folded into every agent's
+// system prompt so severity tiers and resource requests get judged against
+// what actually happened here before, instead of being invented from
+// nothing. The agents are explicitly told never to restate these numbers
+// as facts about the case they're currently looking at -- this is
+// precedent for calibration, not a data feed about the active incident.
+// Sourced from WHO Nepal's emergency page, OCHA/ReliefWeb situation
+// reporting, and Wikipedia's aggregation of wire coverage (ABC, CNN) on
+// the August 2026 Nepal floods, as compiled in early September 2026.
+const NEPAL_HISTORICAL_CONTEXT =
+  "Real historical precedent for calibration only, NOT data about the " +
+  "current incident (Nepal floods, Aug 2026, Rasuwa/Nuwakot/Dhading/" +
+  "Gorkha/Chitwan): roughly 93,000 people affected, ~1,200 displaced from " +
+  "at least 3 villages, over 20,800 security personnel deployed (Army, " +
+  "Police, Armed Police Force) plus 18,700+ rescuers overall, 3 health " +
+  "posts destroyed and 1 hospital partially damaged with 2 more cut off " +
+  "from access, roughly 10,000 households needing immediate relief, and " +
+  "42km of roads plus 41 bridges damaged. Use this only to judge whether a " +
+  "severity tier or resource request is realistically scaled for Nepal -- " +
+  "never restate these specific figures as facts about the case you are " +
+  "currently reasoning about.";
+
 // ---- Scoped input selection (per model_settings.exclude / scope_per_call) --
 
 // Only ever the current zone's own items — never the full national feed —
@@ -176,7 +209,8 @@ function buildProvenanceLine(feedItems, depotRows, capturedAt) {
   const depotPart = depotRows.length
     ? `${depotRows.length} depot line${depotRows.length === 1 ? "" : "s"} (${depotRows.map((d) => d.label).join(", ")})`
     : "no depot lines matched yet";
-  return `Sent: ${feedPart} · ${depotPart} · captured ${capturedAt} · AI DRAFT, not live`;
+  return `Sent: ${feedPart} · ${depotPart} · captured ${capturedAt} · calibrated against real Aug 2026 ` +
+    `Nepal flood-response data (WHO/OCHA) · AI DRAFT, not live`;
 }
 
 // ---- The 3 sequential per-agent calls (routing_method.per_agent_calls) -----
@@ -190,7 +224,9 @@ async function groqNeedsImpact(scenario, feedItems) {
       role: "system",
       content: "You are the Needs & Impact Agent in a Nepal disaster-response command dashboard. " +
         "Reply in ONE short sentence, max 30 words. This is a draft recommendation for a human " +
-        "commander, not a final decision. Never reference citizen reports or cross-border data."
+        "commander, not a final decision. Never reference citizen reports or cross-border data. " +
+        NEPAL_HISTORICAL_CONTEXT + " When it genuinely strengthens your judgment you may briefly " +
+        "note comparability to that real precedent, but don't force a comparison into every reply."
     },
     {
       role: "user",
@@ -211,7 +247,9 @@ async function groqLogistics(scenario, needsText, depotRows) {
     {
       role: "system",
       content: "You are the Resource & Logistics Agent. Reply in ONE short sentence, max 30 words. " +
-        "This is a draft recommendation for a human commander, not a final decision."
+        "This is a draft recommendation for a human commander, not a final decision. " +
+        NEPAL_HISTORICAL_CONTEXT + " Use it to judge whether the allocation being asked for is " +
+        "realistic at Nepal's actual response scale, not to describe the current incident."
     },
     {
       role: "user",
@@ -232,7 +270,7 @@ async function groqCommand(needsText, logisticsText) {
       content: "You are the Command & Prioritization Agent, resolving a disagreement between two other " +
         "agents. Reply in ONE short sentence, max 30 words. You only ever produce draft recommendation " +
         "text — you never dispatch anything yourself. A human Incident Commander must approve, amend, " +
-        "or reject it before anything moves."
+        "or reject it before anything moves. " + NEPAL_HISTORICAL_CONTEXT
     },
     {
       role: "user",
