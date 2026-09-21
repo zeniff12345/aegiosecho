@@ -67,18 +67,30 @@ const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_FALLBACK_MODEL = "openai/gpt-oss-120b";
 
 async function groqRequestOnce(model, messages, maxTokens) {
+  const body = {
+    model,
+    temperature: 0.4,
+    // gpt-oss models spend part of the token budget on hidden internal
+    // reasoning before writing the visible answer -- at the small
+    // max_tokens values below (originally 140-150) that reasoning was
+    // eating the ENTIRE budget, leaving nothing for the actual reply
+    // (that's what "Groq response had no content" meant: the call
+    // succeeded, the model just never got to the answer). Padding the
+    // budget and asking for minimal reasoning effort fixes both sides.
+    max_tokens: Math.max(maxTokens, 350),
+    messages
+  };
+  if (/^openai\/gpt-oss/.test(model)) {
+    body.reasoning_effort = "low";
+  }
+
   const res = await fetch(GROQ_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${GROQ_API_KEY}`
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.4,
-      max_tokens: maxTokens,
-      messages
-    })
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
@@ -99,7 +111,14 @@ async function groqRequestOnce(model, messages, maxTokens) {
   }
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Groq response had no content");
+  const finishReason = data?.choices?.[0]?.finish_reason;
+  if (!text) {
+    throw new Error(
+      finishReason === "length"
+        ? "Groq response had no content (ran out of tokens on internal reasoning before writing an answer)"
+        : "Groq response had no content"
+    );
+  }
   return text.trim();
 }
 
