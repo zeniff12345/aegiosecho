@@ -47,18 +47,24 @@
 
 let GROQ_API_KEY = null;
 let USE_GROQ = false;
-let GROQ_MODEL = localStorage.getItem("aegisGroqModel") || "llama-3.3-70b-versatile";
+// NOTE: this account's Groq project doesn't have the Llama chat models
+// (llama-3.3-70b-versatile, llama-3.1-8b-instant) enabled at all -- checked
+// directly in the Groq Playground's model picker and neither one is even
+// listed there, only meta-llama's prompt-guard classifier models are.
+// What IS listed and already working for this account/key: OpenAI's
+// open-weight models Groq hosts (openai/gpt-oss-120b was shown selected
+// and usable in the Playground). Switched both the default and the
+// fallback to those instead of guessing at more Llama variants.
+let GROQ_MODEL = localStorage.getItem("aegisGroqModel") || "openai/gpt-oss-20b";
 let groqRoundCounter = 0;
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-// Confirmed via console.groq.com/docs/models: the smallest, most widely
-// available production model on Groq. Used as an automatic safety net
-// below -- some accounts/keys don't have every model enabled (that's what
-// was actually happening here: "model does not exist or you do not have
-// access to it" for llama-3.3-70b-versatile on this specific key), and
-// this model is the one most likely to just work on any account.
-const GROQ_FALLBACK_MODEL = "llama-3.1-8b-instant";
+// Used as an automatic safety net below -- if the default model above ever
+// isn't enabled for a given key either, this is a second, different model
+// on the SAME (confirmed-available) provider to retry with automatically
+// instead of falling all the way back to rule-based text every round.
+const GROQ_FALLBACK_MODEL = "openai/gpt-oss-120b";
 
 async function groqRequestOnce(model, messages, maxTokens) {
   const res = await fetch(GROQ_ENDPOINT, {
