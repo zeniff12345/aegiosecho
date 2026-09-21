@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Aegis Echo — Command Dashboard</title>
+  <!-- Leaflet: real map of Nepal on Panel B, tiles rendered from
+       OpenStreetMap data (see js/mapEngine.js header comment). -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -102,26 +105,14 @@
         </fieldset>
 
         <div id="map-area" class="map-area">
-          <svg id="grid-map-svg" class="grid-map-svg" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tactical grid map of Nepal">
-            <defs>
-              <pattern id="map-grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" class="grid-pattern-line"></path>
-              </pattern>
-              <clipPath id="nepal-clip">
-                <path id="nepal-clip-path"></path>
-              </clipPath>
-            </defs>
-            <rect id="map-grid-pattern-rect" x="-200" y="-200" width="1400" height="830" fill="url(#map-grid-pattern)"></rect>
-            <path id="nepal-outline" class="nepal-outline"></path>
-            <g id="province-layer" clip-path="url(#nepal-clip)"></g>
-            <g id="cascade-glow-layer"></g>
-            <g id="cascade-watch-layer"></g>
-            <g id="depot-layer"></g>
-            <path id="deployment-route-path" class="deployment-route-path"></path>
-            <g id="asset-trail-layer"></g>
-            <g id="hazard-markers"></g>
-            <g id="asset-marker" class="asset-marker" hidden></g>
-          </svg>
+          <!-- Real Leaflet map of Nepal (CARTO dark tiles rendered from
+               OpenStreetMap data) -- see js/mapEngine.js. Replaces the
+               earlier hand-projected SVG grid map. -->
+          <div id="leaflet-map" class="leaflet-map" role="img" aria-label="Tactical map of Nepal, OpenStreetMap basemap"></div>
+          <!-- Decorative HUD grid overlay on top of the real tiles, toggled
+               by the "Grid" sidebar checkbox -- purely cosmetic, not part
+               of the map data. -->
+          <div id="map-grid-overlay" class="map-grid-overlay"></div>
           <div id="map-tooltip-el" class="map-tooltip" hidden></div>
           <div class="map-controls" aria-label="Map zoom controls">
             <button id="map-zoom-in" type="button" title="Zoom in">+</button>
@@ -161,7 +152,6 @@
           <button id="debate-replay" type="button" class="playback-button" disabled>REPLAY</button>
           <button id="debate-speed" type="button" class="playback-button" disabled>1x</button>
           <button id="dispatch-json-btn" type="button" class="playback-button" disabled title="Copy the structured dispatch plan JSON for this case">JSON</button>
-          <button id="export-report-btn" type="button" class="playback-button" disabled title="Download a PDF report of this case's dispatch decision and debate transcript">PDF</button>
         </div>
       </div>
       <div id="debate-log" class="debate-log">
@@ -200,6 +190,8 @@
   <script src="js/resourceLogisticsAgent.js"></script>
   <script src="js/commandAgent.js"></script>
   <script src="js/debateEngine.js"></script>
+  <!-- Leaflet JS (map engine dependency) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="js/mapEngine.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/aiAgent.js"></script>
@@ -209,12 +201,6 @@
   <script src="js/groqAgent.js"></script>
   <!-- Field Data Ingestion Engine: standalone, not part of the agent debate pipeline -->
   <script src="js/fieldIngestion.js"></script>
-  <!-- jsPDF: client-side PDF generation for the "Export Report" button
-       (agentic-AI report export). No backend — builds the PDF from data
-       already computed at debate-completion time (see latestReportData in
-       js/debateEngine.js). If this CDN fails to load (offline demo), the
-       export button will no-op safely; see the guard in js/main.js. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

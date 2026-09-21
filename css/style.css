@@ -602,71 +602,59 @@ body {
   transition: border-color 240ms ease, box-shadow 240ms ease;
 }
 
-.grid-map-svg {
+.leaflet-map {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  cursor: grab;
+  background: var(--bg);
 }
 
-.grid-map-svg.panning {
-  cursor: grabbing;
+/* Leaflet's own chrome, re-themed to match the HUD look instead of its
+   light-mode defaults. */
+.leaflet-control-attribution {
+  background: rgba(10, 16, 20, 0.78) !important;
+  color: var(--muted) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a {
+  color: var(--azure) !important;
+}
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
 }
 
-.grid-map-svg.hide-labels .cascade-watch-label,
-.grid-map-svg.hide-labels .depot-label {
+/* Decorative HUD grid overlay drawn on top of the real map tiles -- purely
+   cosmetic (toggled by the "Grid" sidebar checkbox), not map data. */
+.map-grid-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(124, 136, 148, 0.12) 0, rgba(124, 136, 148, 0.12) 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(90deg, rgba(124, 136, 148, 0.12) 0, rgba(124, 136, 148, 0.12) 1px, transparent 1px, transparent 40px);
+}
+.map-grid-overlay.grid-hidden {
   display: none;
 }
 
-.grid-pattern-line {
-  fill: none;
-  stroke: rgba(124, 136, 148, 0.1);
-  stroke-width: 1;
-}
-
-.nepal-outline {
-  fill: rgba(124, 136, 148, 0.07);
-  stroke: rgba(124, 136, 148, 0.55);
-  stroke-width: 1.4;
-  vector-effect: non-scaling-stroke;
-}
-
-/* Province bands: simplified, approximate west-to-east regions (see
-   README.md's map section) -- clipped to the real outline path, so this
-   is purely a visual grouping, not a precision boundary claim. Each band
-   gets its own muted hue, echoing the colored-region look of the
-   reference threat-map layout. */
-.province-band {
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-  pointer-events: none;
-}
-.province-band.province-0 { fill: rgba(94, 156, 255, 0.10); stroke: rgba(94, 156, 255, 0.28); }   /* Sudurpashchim */
-.province-band.province-1 { fill: rgba(94, 224, 214, 0.10); stroke: rgba(94, 224, 214, 0.28); }   /* Karnali */
-.province-band.province-2 { fill: rgba(168, 148, 255, 0.10); stroke: rgba(168, 148, 255, 0.28); } /* Lumbini */
-.province-band.province-3 { fill: rgba(255, 196, 92, 0.10); stroke: rgba(255, 196, 92, 0.28); }   /* Gandaki */
-.province-band.province-4 { fill: rgba(255, 122, 122, 0.10); stroke: rgba(255, 122, 122, 0.28); } /* Bagmati */
-.province-band.province-5 { fill: rgba(120, 220, 150, 0.10); stroke: rgba(120, 220, 150, 0.28); } /* Koshi */
-.province-band.madhesh {
-  fill: rgba(224, 168, 96, 0.14);
-  stroke: rgba(224, 168, 96, 0.35);
-  stroke-dasharray: 4 3;
-}
-
-.province-label {
-  fill: rgba(230, 235, 240, 0.32);
-  font-size: 9px;
+/* Province reference-point labels (see js/mapEngine.js's file-header note:
+   these mark one well-known city per province for regional orientation,
+   not administrative boundaries). */
+.province-label-html {
+  transform: translate(-50%, -50%);
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(9, 12, 15, 0.55);
+  color: rgba(230, 235, 240, 0.75);
+  font: 700 9px "Consolas", monospace;
   letter-spacing: 0.08em;
-  text-anchor: middle;
+  white-space: nowrap;
   pointer-events: none;
 }
-.province-label.madhesh-label {
-  fill: rgba(224, 168, 96, 0.55);
-}
-.grid-map-svg.hide-labels .province-label {
-  display: none;
-}
+.province-label-html.province-5 { color: rgba(224, 168, 96, 0.9); } /* Madhesh */
 
 .map-empty-state,
 .debate-empty-state {
@@ -760,83 +748,92 @@ body {
   box-shadow: 0 0 18px rgba(33, 208, 122, 0.08);
 }
 
-.deployment-route-path {
-  fill: none;
-  stroke: var(--emerald);
-  stroke-width: 1.6;
-  stroke-dasharray: 6 6;
-  opacity: 0.75;
-  vector-effect: non-scaling-stroke;
-  pointer-events: none;
+.deployment-route-html {
+  stroke: var(--emerald) !important;
+  stroke-width: 1.6 !important;
+  stroke-dasharray: 6 6 !important;
+  stroke-opacity: 0.75 !important;
+  fill: none !important;
+  pointer-events: none !important;
 }
 
-.hazard-marker {
+.hazard-icon-wrap {
   cursor: pointer;
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: filter 240ms ease;
-  outline: none;
 }
 
-.hazard-marker:hover,
-.hazard-marker:focus-visible {
+.hazard-marker-html {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+.hazard-marker-html:hover .hazard-core-html {
   filter: brightness(1.35);
 }
 
-.hazard-ring-svg {
-  fill: none;
-  stroke: var(--amber);
-  stroke-width: 0.8;
-  vector-effect: non-scaling-stroke;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: radar-ping-svg 2.8s ease-out infinite;
+.hazard-ring-html {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 0.8px solid var(--amber);
+  animation: radar-ping-html 2.8s ease-out infinite;
   pointer-events: none;
 }
 
-.hazard-ring-svg.ring-1 { animation-delay: 0.75s; }
-.hazard-ring-svg.ring-2 { animation-delay: 1.5s; }
+.hazard-ring-html.ring-1 { animation-delay: 0.75s; }
+.hazard-ring-html.ring-2 { animation-delay: 1.5s; }
 
-.hazard-ring-svg.critical {
-  stroke: var(--crimson);
+.hazard-marker-html.critical .hazard-ring-html {
+  border-color: var(--crimson);
 }
 
-.hazard-core-svg {
-  fill: var(--amber);
-  stroke: var(--amber);
-  filter: drop-shadow(0 0 3px currentColor);
+.hazard-core-html {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6.8px;
+  height: 6.8px;
+  margin: -3.4px 0 0 -3.4px;
+  border-radius: 50%;
+  background: var(--amber);
+  filter: drop-shadow(0 0 3px var(--amber));
 }
 
-.hazard-core-svg.critical {
-  fill: var(--crimson);
-  stroke: var(--crimson);
+.hazard-marker-html.critical .hazard-core-html {
+  background: var(--crimson);
+  filter: drop-shadow(0 0 3px var(--crimson));
 }
 
-.hazard-marker.active .hazard-core-svg {
-  stroke: var(--text);
-  stroke-width: 1.2;
+.hazard-marker-html.active .hazard-core-html {
+  outline: 1.2px solid var(--text);
+  outline-offset: 1px;
 }
 
-@keyframes radar-ping-svg {
+@keyframes radar-ping-html {
   0% { transform: scale(0.7); opacity: 0.85; }
   70%, 100% { transform: scale(3.4); opacity: 0; }
 }
 
-.cascade-glow {
-  fill: var(--crimson);
+.cascade-glow-html {
+  fill: var(--crimson) !important;
+  fill-opacity: 0.22 !important;
+  stroke: none !important;
   filter: blur(6px);
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
-.cascade-watch-ring {
-  fill: none;
-  stroke: var(--crimson);
-  stroke-width: 1.2;
-  stroke-dasharray: 4 4;
-  vector-effect: non-scaling-stroke;
-  opacity: 0.75;
+.cascade-watch-ring-html {
+  fill: none !important;
+  stroke: var(--crimson) !important;
+  stroke-width: 1.2 !important;
+  stroke-dasharray: 4 4 !important;
+  stroke-opacity: 0.75 !important;
   animation: cascade-watch-pulse 2.6s ease-in-out infinite;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 @keyframes cascade-watch-pulse {
@@ -844,31 +841,51 @@ body {
   50% { opacity: 0.9; }
 }
 
-.cascade-watch-label {
-  fill: var(--crimson);
+.cascade-watch-label-html {
+  transform: translate(-50%, -100%);
+  margin-top: -6px;
+  color: var(--crimson);
   font: 700 9px "Consolas", monospace;
   letter-spacing: 0.04em;
-  text-anchor: middle;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.depot-marker {
-  pointer-events: all;
+.depot-icon-wrap {
   cursor: pointer;
 }
 
-.depot-triangle {
-  fill: var(--azure);
-  stroke: rgba(10, 16, 20, 0.6);
-  stroke-width: 0.6;
+.depot-marker-html {
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+.depot-triangle-html {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: -7px 0 0 -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--azure);
   filter: drop-shadow(0 0 3px var(--azure));
 }
 
-.depot-label {
-  fill: var(--muted);
+.depot-label-html {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  transform: translateX(-50%);
+  color: var(--muted);
   font: 8px "Consolas", monospace;
   letter-spacing: 0.03em;
-  text-anchor: middle;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   pointer-events: none;
 }
 
@@ -902,33 +919,33 @@ body {
   margin-bottom: 3px;
 }
 
-.asset-marker {
+.asset-icon-wrap {
+  background: transparent;
+}
+
+.asset-marker-html {
   color: var(--emerald);
+  pointer-events: none;
 }
 
-.asset-marker[hidden] {
-  display: none;
-}
-
-.asset-marker svg {
+.asset-marker-html svg {
   display: block;
   fill: currentColor;
   filter: drop-shadow(0 0 5px currentColor);
 }
 
-.asset-marker.moving {
+.leaflet-marker-icon.moving .asset-marker-html {
   filter: drop-shadow(0 0 8px var(--emerald));
 }
 
-.asset-trail-path {
-  fill: none;
-  stroke: var(--emerald);
-  stroke-width: 1.6;
-  stroke-dasharray: 5 7;
-  opacity: 0.65;
-  vector-effect: non-scaling-stroke;
+.asset-trail-html {
+  stroke: var(--emerald) !important;
+  stroke-width: 1.6 !important;
+  stroke-dasharray: 5 7 !important;
+  stroke-opacity: 0.65 !important;
+  fill: none !important;
   animation: trail-fade 2.2s ease-out forwards;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 @keyframes trail-fade {
