@@ -52,10 +52,15 @@ let groqRoundCounter = 0;
 
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-async function groqChat(messages, maxTokens = 150) {
-  if (!GROQ_API_KEY) throw new Error("No Groq API key set");
-  if (!navigator.onLine) throw new Error("Offline — Groq agents require internet");
+// Confirmed via console.groq.com/docs/models: the smallest, most widely
+// available production model on Groq. Used as an automatic safety net
+// below -- some accounts/keys don't have every model enabled (that's what
+// was actually happening here: "model does not exist or you do not have
+// access to it" for llama-3.3-70b-versatile on this specific key), and
+// this model is the one most likely to just work on any account.
+const GROQ_FALLBACK_MODEL = "llama-3.1-8b-instant";
 
+async function groqRequestOnce(model, messages, maxTokens) {
   const res = await fetch(GROQ_ENDPOINT, {
     method: "POST",
     headers: {
@@ -63,7 +68,7 @@ async function groqChat(messages, maxTokens = 150) {
       "Authorization": `Bearer ${GROQ_API_KEY}`
     },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model,
       temperature: 0.4,
       max_tokens: maxTokens,
       messages
@@ -82,12 +87,36 @@ async function groqChat(messages, maxTokens = 150) {
       // response wasn't JSON (e.g. a proxy/firewall page instead of Groq
       // itself) -- leave detail blank, the status code is still shown.
     }
-    throw new Error(`Groq request failed: ${res.status}${detail}`);
+    const err = new Error(`Groq request failed: ${res.status}${detail}`);
+    err.status = res.status;
+    throw err;
   }
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error("Groq response had no content");
   return text.trim();
+}
+
+async function groqChat(messages, maxTokens = 150) {
+  if (!GROQ_API_KEY) throw new Error("No Groq API key set");
+  if (!navigator.onLine) throw new Error("Offline — Groq agents require internet");
+
+  try {
+    return await groqRequestOnce(GROQ_MODEL, messages, maxTokens);
+  } catch (err) {
+    // A 404 here means "this model doesn't exist or this key can't use
+    // it" -- not a network problem, not a bad key. Rather than falling
+    // all the way back to rule-based text every single round, try once
+    // more with a model that's almost always enabled, and if that works,
+    // just adopt it going forward so we stop hitting this every time.
+    if (err.status === 404 && GROQ_MODEL !== GROQ_FALLBACK_MODEL) {
+      const text = await groqRequestOnce(GROQ_FALLBACK_MODEL, messages, maxTokens);
+      GROQ_MODEL = GROQ_FALLBACK_MODEL;
+      localStorage.setItem("aegisGroqModel", GROQ_MODEL);
+      return text;
+    }
+    throw err;
+  }
 }
 
 // ---- Scoped input selection (per model_settings.exclude / scope_per_call) --
